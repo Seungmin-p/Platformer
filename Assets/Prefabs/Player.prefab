@@ -14,9 +14,9 @@ GameObject:
   - component: {fileID: 4444952510849813801}
   - component: {fileID: 7670754741527880651}
   - component: {fileID: 549586765636306392}
-  m_Layer: 0
+  m_Layer: 10
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -103,7 +103,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   m_Size: {x: 0.95, y: 1.8}
-  m_EdgeRadius: 0
+  m_EdgeRadius: 0.01
 --- !u!50 &4444952510849813801
 Rigidbody2D:
   serializedVersion: 5
@@ -129,7 +129,7 @@ Rigidbody2D:
     m_Bits: 0
   m_Interpolate: 0
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 4
 --- !u!212 &7670754741527880651
 SpriteRenderer:
@@ -157,7 +157,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 4294967295
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+  - {fileID: 2100000, guid: 9a80ea237672a37498a4649e8cca1aeb, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -206,6 +206,7 @@ MonoBehaviour:
   rb: {fileID: 4444952510849813801}
   collider: {fileID: 846591713153269689}
   collectedPrefab: {fileID: 4921909344839039071, guid: b188ff6df6e698e40bef9b56f4ebff53, type: 3}
+  playerRenderer: {fileID: 7670754741527880651}
   moveSpeed: 9
   jumpForce: 24
   wallSlip: 1

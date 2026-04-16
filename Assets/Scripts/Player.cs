@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class Player : MonoBehaviour
@@ -7,6 +8,7 @@ public class Player : MonoBehaviour
     [SerializeField] Rigidbody2D rb;
     [SerializeField] BoxCollider2D collider;
     [SerializeField] GameObject collectedPrefab;
+    [SerializeField] SpriteRenderer playerRenderer;
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpForce;
     [SerializeField] float wallSlip;
@@ -16,12 +18,21 @@ public class Player : MonoBehaviour
     private bool canJump;
     private int playerDirection;
     private bool playerDead;
+    
+    public event Action<Vector2> OnPlayerDeath;
+    
+    private void Awake()
+    {
+        //이벤트 구독처리
+        //외부에서 이벤트 호출용 메소드를 호출하면 사망이벤트 진행
+        OnPlayerDeath += HandleDeath;
+    }
 
     private void Update()
     {
         horizontalInput = Input.GetAxis("Horizontal");
 
-        if (Input.GetButtonDown("Jump") && canJump)
+        if (Input.GetButtonDown("Jump") && (canJump || IsWall()) )
         {
             Vector2 jumpPos = new Vector2(rb.linearVelocity.x, jumpForce);
 
@@ -31,8 +42,7 @@ public class Player : MonoBehaviour
                 {
                     //이때 벽에서 밀어주면서 점프해야함
                     //이후 더블점프도 가능
-                    isDoubleJump = false;
-                    canJump = true;
+                    CanDoubleJump();
 
                     //붙은 벽의 반대방향으로 밀려야함
                     jumpPos = new Vector2(jumpForce * (playerDirection * -1), jumpForce);
@@ -51,6 +61,13 @@ public class Player : MonoBehaviour
         UpdateAnimationState();
     }
 
+    //더블점프 초기화용 메소드
+    public void CanDoubleJump()
+    {
+        isDoubleJump = false;
+        canJump = true;
+    }
+
     private void FixedUpdate()
     {
         if( playerDead ) return;
@@ -67,6 +84,7 @@ public class Player : MonoBehaviour
         }
     }
 
+    //이미지 방향 전환
     private void FlipSprite()
     {
         if (horizontalInput > 0f)
@@ -81,6 +99,7 @@ public class Player : MonoBehaviour
         }
     }
 
+    //애니메이션 전환용 메소드
     private void UpdateAnimationState()
     {
         bool isRunning = Mathf.Abs(horizontalInput) > 0.1f;
@@ -118,18 +137,32 @@ public class Player : MonoBehaviour
 
     private bool IsGrounded()
     {
-        if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.down, 0.1f,
-                LayerMask.GetMask("Ground")))
+        //만약 올라가는 도중이라면 착지할 수가 없음
+        //플랫폼을 지날 때 추가로 점프가 되는걸 방지해줌
+        if (rb.linearVelocity.y > 0.01f) return false; 
+        
+        //박스의 크기를 넓고 얇게 정해줌
+        Vector2 boxSize = new Vector2(collider.bounds.size.x * 0.8f, 0.1f);
+
+        //박스의 위치를 플레이어의 가장 아래로 정해줌
+        Vector2 startPos = new Vector2(collider.bounds.center.x, collider.bounds.min.y);
+
+        //발바닥에서 아래로 박스캐스팅 진행
+        //부딪힌 무언가의 레이어가 그라운드, 플랫폼인 경우 착지판정
+        if (Physics2D.BoxCast(startPos, boxSize, 0f, Vector2.down, 0.1f, LayerMask.GetMask("Ground", "Platforms")))
         {
             canJump = true;
             return true;
         }
 
+        //아니라면 착지하지 않은 상태
         return false;
     }
 
+    //벽 판정용 메소드
     private bool IsWall()
     {
+        //보는 방향 바로앞에 그라운드 레이어 벽이 있다면 벽 판정
         if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.right * playerDirection, 0.03f,
                 LayerMask.GetMask("Ground")))
         {
@@ -139,6 +172,7 @@ public class Player : MonoBehaviour
         return false;
     }
 
+    //벽에서 미끄러지는 메소드
     private void WallSlip()
     {
         rb.linearVelocity = new Vector2(0f, wallSlip * -1);
@@ -155,31 +189,33 @@ public class Player : MonoBehaviour
             collision.gameObject.SetActive(false);
         }
     }
-
-    private void OnCollisionEnter2D(Collision2D collision)
+    
+    //사망처리 시작용 메소드
+    private void HandleDeath(Vector2 bounceDir)
     {
-        if (collision.gameObject.tag == "Trap")
-        {
-            //Trap과 충돌한 정확한 위치 가져오기
-            //0은 가장 먼저 부딪힌 첫번째 포인트를 의미함
-            //.point를 통해 부딪힌 위치의 정확한 월드좌표 X,Y를 가져옴
-            Vector2 contactPoint = collision.GetContact(0).point;
-
-            //내 캐릭터의 중심 위치 - 부딪힌 정확한 포인트의 벡터연산으로 부딪힌 좌표에서 캐릭터를 향하는 방향을 구함
-            //.normalized를 통해 정규화 진행
-            Vector2 knockbackDir = ((Vector2)transform.position - contactPoint).normalized;
-
-            //구한 knockbackDir 값을 전달
-            GameOver(knockbackDir);
-        }
+        if (playerDead) return;
+        
+        //기존에 만들어둔 사망 로직 실행
+        GameOver(bounceDir);
     }
 
+    //함정, 몬스터에서 이벤트를 호출하기 위해 사용하는 통로용 메소드
+    public void CallDeathEvent(Vector2 bounceDir)
+    {
+        //이벤트 호출
+        OnPlayerDeath?.Invoke(bounceDir);
+    }
+
+    //사망처리용 메소드
     private void GameOver(Vector2 bounceDir)
     {
         //플레이어 사망처리, 블록 통과를 위한 트리거 활성화, 애니메이션 처리를 위한 트리거 설정
         playerDead = true;
         collider.isTrigger = true;
         animator.SetTrigger("onHit");
+        
+        //디졸브를 위한 코루틴 실행
+        StartCoroutine(DieRoutine());
         
         //기존 속도 제거, z축 잠금 해제
         rb.linearVelocity = Vector2.zero;
@@ -193,5 +229,32 @@ public class Player : MonoBehaviour
         
         //캐릭터 회전처리
         rb.AddTorque(bounceDir.x * 5f, ForceMode2D.Impulse);
+    }
+    
+    //디졸브 처리용 메소드
+    private IEnumerator DieRoutine()
+    {
+        float duration = 1.0f; //사라지는데 걸리는 총 시간
+        float elapsedTime = 0f;
+
+        //플레이어에 적용된 머티리얼을 가져옴
+        Material mat = playerRenderer.material;
+
+        while (elapsedTime < duration)
+        {
+            elapsedTime += Time.deltaTime;
+            
+            //시간에 따라 0에서 1로 부드럽게 변하는 값 계산 (Lerp)
+            float dissolveValue = Mathf.Lerp(0f, 1f, elapsedTime / duration);
+            
+            //쉐이더의 Dissolve 변수값 변경
+            mat.SetFloat("_Dissolve", dissolveValue);
+            
+            //다음 프레임까지 대기
+            yield return null;
+        }
+
+        //설정한 시간에 도달하면 오브젝트 파괴
+        Destroy(gameObject);
     }
 }

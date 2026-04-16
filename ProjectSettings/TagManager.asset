@@ -6,6 +6,9 @@ TagManager:
   tags:
   - Item
   - Trap
+  - Platforms
+  - Ground
+  - Monster
   layers:
   - Default
   - TransparentFX
@@ -15,11 +18,11 @@ TagManager:
   - UI
   - Ground
   - Item
-  - 
-  - 
-  - 
-  - 
-  - 
+  - Platforms
+  - Trap
+  - Player
+  - Other
+  - Monster
   - 
   - 
   - 

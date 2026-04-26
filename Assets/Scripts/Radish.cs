@@ -4,11 +4,13 @@ using UnityEngine;
 public class Radish : Mushroom 
 {
 
-    [SerializeField] private GameObject[] propellerDebrisPrefabs; //잎사귀 프리팹
-    [SerializeField] private float floatAmplitudeX = 3.0f; //좌우 이동 폭
-    [SerializeField] private float floatSpeedX = 1.0f; //좌우 이동 속도
-    [SerializeField] private float floatAmplitudeY = 1.5f; //상하 이동 폭
-    [SerializeField] private float floatSpeedY = 2.0f; //상하 이동 속도
+    [SerializeField] GameObject[] propellerDebrisPrefabs; //잎사귀 프리팹
+    [SerializeField] float floatAmplitudeX = 3.0f; //좌우 이동 폭
+    [SerializeField] float floatSpeedX = 1.0f; //좌우 이동 속도
+    [SerializeField] float floatAmplitudeY = 1.5f; //상하 이동 폭
+    [SerializeField] float floatSpeedY = 2.0f; //상하 이동 속도
+    [SerializeField] ParticleSystem flyDust;
+    
     
     private bool isFlying = true; //비행 상태
     private Vector3 startPos; //시작 위치
@@ -106,7 +108,10 @@ public class Radish : Mushroom
 
         //애니메이션 전환
         animator.SetBool("isFlying", false);
-
+        
+        //비행 파티클 중단
+        flyDust.Stop();
+        
         //중력 적용
         rb.bodyType = RigidbodyType2D.Dynamic;
         rb.gravityScale = 8f; 

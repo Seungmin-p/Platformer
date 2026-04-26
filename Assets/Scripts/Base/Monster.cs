@@ -1,5 +1,8 @@
+using System;
 using UnityEngine;
 using System.Collections;
+using Random = UnityEngine.Random;
+
 
 public abstract class Monster : MonoBehaviour
 {
@@ -8,6 +11,7 @@ public abstract class Monster : MonoBehaviour
     [SerializeField] protected Animator animator;
     [SerializeField] protected Collider2D col;
     [SerializeField] protected SpriteRenderer spriteRenderer;
+    [SerializeField] protected ParticleSystem runDust;
     
     [SerializeField] protected float moveSpeed = 4f;
     [SerializeField] protected float bounceForce = 1f;
@@ -15,6 +19,8 @@ public abstract class Monster : MonoBehaviour
     //몬스터가 가질 수 있는 공통 상태
     public enum State { Idle, Patrol, Chase, Attack, Dead }
     [SerializeField] protected State currentState = State.Idle;
+    
+    public static event Action OnMonsterDefeated; //몬스터 킬 카운팅용 이벤트
 
     protected virtual void Start() { }
 
@@ -53,8 +59,12 @@ public abstract class Monster : MonoBehaviour
                 {
                     playerRb.linearVelocity = new Vector2(playerRb.linearVelocity.x, 0); //기존 낙하 속도 초기화
                     playerRb.AddForce(Vector2.up * 20f, ForceMode2D.Impulse); //플레이어 위로 점프
+                    player.JumpDust(false); //점프 파티클 호출
                     player.CanDoubleJump(); //밟은 후 추가 점프 가능하도록
                 }
+                
+                //몬스터 사망 관련 이벤트 호출
+                OnMonsterDefeated.Invoke();
 
                 //몬스터 사망 함수 호출
                 Die(bounceDir);
@@ -124,5 +134,11 @@ public abstract class Monster : MonoBehaviour
             Vector2 dir = ((Vector2)player.transform.position - contactPoint).normalized;
             player.CallDeathEvent(dir * bounceForce);
         }
+    }
+    
+    //달리는 파티클 출력용 메소드
+    private void RunDust()
+    {
+        runDust.Emit(Random.Range(1,3));
     }
 }

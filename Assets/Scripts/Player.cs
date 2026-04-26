@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class Player : MonoBehaviour
 {
@@ -9,6 +10,15 @@ public class Player : MonoBehaviour
     [SerializeField] BoxCollider2D collider;
     [SerializeField] GameObject collectedPrefab;
     [SerializeField] SpriteRenderer playerRenderer;
+    
+    //파티클처리용
+    [SerializeField] ParticleSystem runDust;
+    [SerializeField] ParticleSystem jumpDust;
+    [SerializeField] ParticleSystem landingDust;
+    [SerializeField] ParticleSystem wallSlipDust;
+    [SerializeField] ParticleSystem wallJumpDust;
+    
+    //이동 속도, 점프 강도, 벽에서 미끄러지는 강도
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpForce;
     [SerializeField] float wallSlip;
@@ -18,8 +28,12 @@ public class Player : MonoBehaviour
     private bool canJump;
     private int playerDirection;
     private bool playerDead;
+    private bool landing;
+    private bool wallJumped; //파티클 출력을 위한 벽, 일반 점프 구별용 변수
+    private float wallJumpTimer; //벽점프 직후 FixedUpdate 영향을 받지 않기 위한 변수
     
-    public event Action<Vector2> OnPlayerDeath;
+    public static event Action<Vector2> OnPlayerDeath; //플레이어 죽음처리용 이벤트
+    public static event Action OnItemCollected; //아이템 획득카운팅용 이벤트
     
     private void Awake()
     {
@@ -44,36 +58,46 @@ public class Player : MonoBehaviour
                     //이후 더블점프도 가능
                     CanDoubleJump();
 
+                    //상태 및 타이머 설정
+                    wallJumped = true;
+                    wallJumpTimer = 0.1f;
+                    
+                    //방향 전환처리
+                    playerDirection *= -1; 
+                    transform.localScale = new Vector3(transform.localScale.x * -1, 1, 1);
+
                     //붙은 벽의 반대방향으로 밀려야함
-                    jumpPos = new Vector2(jumpForce * (playerDirection * -1), jumpForce);
+                    jumpPos = new Vector2((jumpForce / 3 ) * playerDirection, jumpForce);
                 }
                 else
                 {
+                    wallJumped = false;
                     isDoubleJump = true;
                     canJump = false;
                 }
             }
 
+            //점프 종류에 따른 파티클 호출
+            JumpDust(wallJumped);
             rb.linearVelocity = jumpPos;
         }
 
         FlipSprite();
         UpdateAnimationState();
     }
-
-    //더블점프 초기화용 메소드
-    public void CanDoubleJump()
-    {
-        isDoubleJump = false;
-        canJump = true;
-    }
-
+    
+    //기본 이동 + 벽 슬라이딩 담당
     private void FixedUpdate()
     {
         if( playerDead ) return;
-        
+
         //벽점프 밀어내기를 위한 예외처리
-        if (!IsWall())
+        //벽 점프 직후가 아니라면 문제없이 이동 가능
+        if (wallJumpTimer > 0)
+        {
+            wallJumpTimer -= Time.deltaTime;
+        }
+        else
         {
             rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
         }
@@ -84,9 +108,18 @@ public class Player : MonoBehaviour
         }
     }
 
+    //더블점프 초기화용 메소드
+    public void CanDoubleJump()
+    {
+        isDoubleJump = false;
+        canJump = true;
+    }
+
     //이미지 방향 전환
     private void FlipSprite()
     {
+        if (wallJumpTimer > 0f) return;
+        
         if (horizontalInput > 0f)
         {
             playerDirection = 1;
@@ -99,6 +132,94 @@ public class Player : MonoBehaviour
         }
     }
 
+    private bool IsJumping()
+    {
+        return rb.linearVelocity.y > 0;
+    }
+
+    private bool IsFalling()
+    {
+        if (!IsJumping() && !IsGrounded())
+        {
+            //착지판정을 위한 상태 변경
+            landing = true;
+            
+            //애니메이션 해제용
+            isDoubleJump = false;
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool IsGrounded()
+    {
+        //만약 올라가는 도중이라면 착지할 수가 없음
+        //플랫폼을 지날 때 추가로 점프가 되는걸 방지해줌
+        if (rb.linearVelocity.y > 0.01f) return false; 
+        
+        //박스의 크기를 넓고 얇게 정해줌
+        Vector2 boxSize = new Vector2(collider.bounds.size.x * 1f, 0.1f);
+
+        //박스의 위치를 플레이어의 가장 아래로 정해줌
+        Vector2 startPos = new Vector2(collider.bounds.center.x, collider.bounds.min.y);
+
+        //발바닥에서 아래로 박스캐스팅 진행
+        //부딪힌 무언가의 레이어가 그라운드, 플랫폼인 경우 착지판정
+        if (Physics2D.BoxCast(startPos, boxSize, 0f, Vector2.down, 0.1f, LayerMask.GetMask("Ground", "Platforms")))
+        {
+            //공중에 있다가 땅에 닿은건지 확인
+            if (landing)
+            {
+                //무한 착지 판정 방지, 착지 파티클 출력
+                landing = false;
+                LandingDust();
+            }
+            
+            canJump = true;
+            return true;
+        }
+
+        //아니라면 착지하지 않은 상태
+        return false;
+    }
+
+    //벽 판정용 메소드
+    private bool IsWall()
+    {
+        //보는 방향 바로앞에 그라운드 레이어 벽이 있다면 벽 판정
+        if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.right * playerDirection, 0.03f,
+                LayerMask.GetMask("Ground")))
+        {
+            
+            return true;
+        }
+
+        return false;
+    }
+
+    //벽에서 미끄러지는 메소드
+    private void WallSlip()
+    {
+        rb.linearVelocity = new Vector2(0f, wallSlip * -1);
+    }
+
+    //아이템 획득처리
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.gameObject.tag == "Item")
+        {
+            //추후 이펙트 오브젝트 자체를 없애줘야 함
+            //스크립트 분리하면 그때 게임 매니저 등에서 처리
+            Instantiate(collectedPrefab, collision.transform.position, Quaternion.identity);
+            
+            //아이템 획득 관련 이벤트 호출
+            OnItemCollected?.Invoke();
+
+            collision.gameObject.SetActive(false);
+        }
+    }
+    
     //애니메이션 전환용 메소드
     private void UpdateAnimationState()
     {
@@ -116,78 +237,6 @@ public class Player : MonoBehaviour
         animator.SetBool("isWall", IsWall());
         
         animator.SetBool("isDead", playerDead);
-    }
-
-    private bool IsJumping()
-    {
-        return rb.linearVelocity.y > 0;
-    }
-
-    private bool IsFalling()
-    {
-        if (!IsJumping())
-        {
-            //애니메이션 해제용
-            isDoubleJump = false;
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool IsGrounded()
-    {
-        //만약 올라가는 도중이라면 착지할 수가 없음
-        //플랫폼을 지날 때 추가로 점프가 되는걸 방지해줌
-        if (rb.linearVelocity.y > 0.01f) return false; 
-        
-        //박스의 크기를 넓고 얇게 정해줌
-        Vector2 boxSize = new Vector2(collider.bounds.size.x * 0.8f, 0.1f);
-
-        //박스의 위치를 플레이어의 가장 아래로 정해줌
-        Vector2 startPos = new Vector2(collider.bounds.center.x, collider.bounds.min.y);
-
-        //발바닥에서 아래로 박스캐스팅 진행
-        //부딪힌 무언가의 레이어가 그라운드, 플랫폼인 경우 착지판정
-        if (Physics2D.BoxCast(startPos, boxSize, 0f, Vector2.down, 0.1f, LayerMask.GetMask("Ground", "Platforms")))
-        {
-            canJump = true;
-            return true;
-        }
-
-        //아니라면 착지하지 않은 상태
-        return false;
-    }
-
-    //벽 판정용 메소드
-    private bool IsWall()
-    {
-        //보는 방향 바로앞에 그라운드 레이어 벽이 있다면 벽 판정
-        if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.right * playerDirection, 0.03f,
-                LayerMask.GetMask("Ground")))
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    //벽에서 미끄러지는 메소드
-    private void WallSlip()
-    {
-        rb.linearVelocity = new Vector2(0f, wallSlip * -1);
-    }
-
-    private void OnTriggerEnter2D(Collider2D collision)
-    {
-        if (collision.gameObject.tag == "Item")
-        {
-            //추후 이펙트 오브젝트 자체를 없애줘야 함
-            //스크립트 분리하면 그때 게임 매니저 등에서 처리
-            Instantiate(collectedPrefab, collision.transform.position, Quaternion.identity);
-
-            collision.gameObject.SetActive(false);
-        }
     }
     
     //사망처리 시작용 메소드
@@ -256,5 +305,44 @@ public class Player : MonoBehaviour
 
         //설정한 시간에 도달하면 오브젝트 파괴
         Destroy(gameObject);
+    }
+
+    //파티클 - 달리는 상황
+    private void RunDust()
+    {
+        runDust.Emit(Random.Range(1,3));
+    }
+    
+    //파티클 - 점프 or 더블점프
+    public void JumpDust(bool wallJumped)
+    {
+        if (wallJumped && !IsGrounded())
+        {
+            //벽점프 파티클
+            wallJumpDust.Play();
+        }
+        else
+        {
+            //일반 점프 파티클
+            jumpDust.Play();
+        }
+    }
+
+    //파티클 - 착지
+    private void LandingDust()
+    {
+        landingDust.Play();
+    }
+
+    //파티클 - 벽 슬라이딩
+    private void WallSlipDust()
+    {
+        wallSlipDust.Play();
+    }
+
+    //파괴될 때 이벤트 해제
+    private void OnDestroy()
+    {
+        OnPlayerDeath -= HandleDeath;
     }
 }

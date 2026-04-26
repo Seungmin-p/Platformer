@@ -4,6 +4,7 @@ public class Rockhead : Trap
 {
     [SerializeField] Animator anim;
     [SerializeField] TrapMovement trapMovement;
+    [SerializeField] ParticleSystem crashDust;
     private float crushThreshold = 0.9f;
     private float hitWaitTime = 1f; //벽에 부딪힌 후 대기시간
     private string currentState = "Idle";
@@ -42,17 +43,36 @@ public class Rockhead : Trap
     private void PlayAnimation(Vector3 dir)
     {
         //어느 방향으로 이동중인지 체크
+        //부딪히는 방향에 따라서 파티클 각도처리 및 애니메이션 실행
         if (Mathf.Abs(dir.x) > Mathf.Abs(dir.y))
         {
-            if (dir.x > 0.1f)UpdateAnimationState("Rockhead_RightHit");
-            else if (dir.x < -0.1f)UpdateAnimationState("Rockhead_LeftHit");
+            if (dir.x > 0.1f)
+            {
+                crashDust.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
+                UpdateAnimationState("Rockhead_RightHit");
+            }
+            else if (dir.x < -0.1f)
+            {
+                crashDust.transform.rotation = Quaternion.Euler(0f, 0f, 270f);
+                UpdateAnimationState("Rockhead_LeftHit");
+            }
             
         }
         else
         {
-            if (dir.y > 0.1f) UpdateAnimationState("Rockhead_TopHit");
-            else if (dir.y < -0.1f) UpdateAnimationState("Rockhead_BottomHit");
+            if (dir.y > 0.1f)
+            {
+                crashDust.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
+                UpdateAnimationState("Rockhead_TopHit");
+            }
+            else if (dir.y < -0.1f)
+            {
+                crashDust.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+                UpdateAnimationState("Rockhead_BottomHit");
+            }
         }
+        
+        crashDust.Play();
     }
 
     private void UpdateAnimationState(string newState)

@@ -137,16 +137,17 @@ MonoBehaviour:
   runDust: {fileID: 6941929859232700477}
   moveSpeed: 4
   bounceForce: 1
-  currentState: 0
+  groundLayers:
+  - serializedVersion: 2
+    m_Bits: 64
+  - serializedVersion: 2
+    m_Bits: 256
   playerLayer:
     serializedVersion: 2
     m_Bits: 1024
   groundLayer:
     serializedVersion: 2
     m_Bits: 64
-  platformLayer:
-    serializedVersion: 2
-    m_Bits: 256
   viewRadius: 20
 --- !u!58 &147811570520619616
 CircleCollider2D:

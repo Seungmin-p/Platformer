@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using FSM;
 
-public class Player : MonoBehaviour
+public class Player : MonoBehaviour, PlayerStateController
 {
+    //각종 컴포넌트
     [SerializeField] Animator animator;
     [SerializeField] Rigidbody2D rb;
     [SerializeField] BoxCollider2D collider;
@@ -22,166 +24,160 @@ public class Player : MonoBehaviour
     [SerializeField] float moveSpeed;
     [SerializeField] float jumpForce;
     [SerializeField] float wallSlip;
-
-    private float horizontalInput;
-    private bool isDoubleJump;
-    private bool canJump;
-    private int playerDirection;
-    private bool playerDead;
-    private bool landing;
-    private bool wallJumped; //파티클 출력을 위한 벽, 일반 점프 구별용 변수
-    private float wallJumpTimer; //벽점프 직후 FixedUpdate 영향을 받지 않기 위한 변수
     
     public static event Action<Vector2> OnPlayerDeath; //플레이어 죽음처리용 이벤트
     public static event Action OnItemCollected; //아이템 획득카운팅용 이벤트
+    
+    //============ 상태패턴용 ============
+    //현재 상태 및 상태머신
+    private IState currentState;
+    private StateMachine stateMachine;
+    
+    //플레이어가 가질 수 있는 모든 상태
+    public PlayerIdleState IdleState { get; private set; }
+    public PlayerRunState RunState { get; private set; }
+    public PlayerJumpState JumpState { get; private set; }
+    public PlayerFallState FallState { get; private set; }
+    public PlayerWallSlipState WallSlipState { get; private set; }
+    public PlayerWallJumpState WallJumpState { get; private set; }
+    public PlayerDoubleJumpState DoubleJumpState { get; private set; }
+    public PlayerHitState HitState { get; private set; }
+    
+    //상태패턴 개편용 새로운 변수들
+    private bool isGrounded;
+    private bool canDoubleJump;
+    private bool canJump;
+    private float xInput;
+    private int playerDirection;
+    private Vector2 hitDirection;
+    private bool playerDead;
+    
+    //플레이어 컴포넌트 전달용
+    public Animator Animator => animator;
+    public Rigidbody2D Rb => rb;
+    public BoxCollider2D Collider => collider;
+    public SpriteRenderer PlayerRenderer => playerRenderer;
+    public ParticleSystem LandingDust => landingDust;
+    public ParticleSystem JumpDust => jumpDust;
+    public ParticleSystem WallJumpDust => wallJumpDust;
+    
+    //상태 체크용 변수
+    //다른 스크립트에서 코드를 작성하다가 실수로 사용하지 못하게 컨트롤러 통해서 관리
+    bool PlayerStateController.IsGrounded => isGrounded; //땅 체크
+    bool PlayerStateController.IsWall => IsWall(); //벽 체크
+    bool PlayerStateController.CanJump { get => canJump; set => canJump = value; } //점프 가능 상태인지
+    bool PlayerStateController.CanDoubleJump { get => canDoubleJump; set => canDoubleJump = value; } //더블 점프 가능 상태인지
+    int PlayerStateController.PlayerDirection { get => playerDirection; set => playerDirection = value; } //플레이어 보는 방향
+    float PlayerStateController.XInput => xInput; //이동(왼쪽 오른쪽) 입력값
+    float PlayerStateController.JumpForce => jumpForce; //점프력
+    float PlayerStateController.WallSlip => wallSlip; //벽 미끄러짐 정도
+    Vector2 PlayerStateController.HitDirection => hitDirection; //무언가에 맞았을 때, 튕겨나갈 방향
     
     private void Awake()
     {
         //이벤트 구독처리
         //외부에서 이벤트 호출용 메소드를 호출하면 사망이벤트 진행
         OnPlayerDeath += HandleDeath;
+        
+        //상태 머신, 상태 초기화
+        stateMachine = new StateMachine();
+        
+        IdleState = new PlayerIdleState(this, stateMachine);
+        RunState = new PlayerRunState(this, stateMachine);
+        FallState = new PlayerFallState(this, stateMachine);
+        JumpState = new PlayerJumpState(this, stateMachine);
+        DoubleJumpState = new PlayerDoubleJumpState(this, stateMachine);
+        WallJumpState = new PlayerWallJumpState(this, stateMachine);
+        WallSlipState = new PlayerWallSlipState(this, stateMachine);
+        HitState = new PlayerHitState(this, stateMachine);
+    }
+
+    private void Start()
+    {
+        stateMachine.ChangeState(IdleState);
     }
 
     private void Update()
     {
-        horizontalInput = Input.GetAxis("Horizontal");
-
-        if (Input.GetButtonDown("Jump") && (canJump || IsWall()) )
-        {
-            Vector2 jumpPos = new Vector2(rb.linearVelocity.x, jumpForce);
-
-            if (!IsGrounded())
-            {
-                if (IsWall())
-                {
-                    //이때 벽에서 밀어주면서 점프해야함
-                    //이후 더블점프도 가능
-                    CanDoubleJump();
-
-                    //상태 및 타이머 설정
-                    wallJumped = true;
-                    wallJumpTimer = 0.1f;
-                    
-                    //방향 전환처리
-                    playerDirection *= -1; 
-                    transform.localScale = new Vector3(transform.localScale.x * -1, 1, 1);
-
-                    //붙은 벽의 반대방향으로 밀려야함
-                    jumpPos = new Vector2((jumpForce / 3 ) * playerDirection, jumpForce);
-                }
-                else
-                {
-                    wallJumped = false;
-                    isDoubleJump = true;
-                    canJump = false;
-                }
-            }
-
-            //점프 종류에 따른 파티클 호출
-            JumpDust(wallJumped);
-            rb.linearVelocity = jumpPos;
-        }
-
-        FlipSprite();
-        UpdateAnimationState();
+        //플레이어의 이동 입력 실시간으로 받기
+        xInput = Input.GetAxis("Horizontal");
+        
+        stateMachine.Update();
     }
     
-    //기본 이동 + 벽 슬라이딩 담당
     private void FixedUpdate()
     {
-        if( playerDead ) return;
-
-        //벽점프 밀어내기를 위한 예외처리
-        //벽 점프 직후가 아니라면 문제없이 이동 가능
-        if (wallJumpTimer > 0)
+        //땅 체크
+        CheckGrounded();
+        
+        stateMachine.FixedUpdate();
+    }
+    
+    //컨트롤러를 통해 실행될 메소드
+    //이동처리
+    void PlayerStateController.ExecuteMove(float inputDirection)
+    {
+        //입력받은 방향을 기준으로 이동
+        rb.linearVelocity = new Vector2(inputDirection * moveSpeed, rb.linearVelocity.y);
+        
+        //이동 할 때 스프라이트 전환 처리 필요
+        if (Mathf.Abs(inputDirection) > 0.1f)
         {
-            wallJumpTimer -= Time.deltaTime;
-        }
-        else
-        {
-            rb.linearVelocity = new Vector2(horizontalInput * moveSpeed, rb.linearVelocity.y);
-        }
-
-        if (IsWall() && !IsJumping() )
-        {
-            WallSlip();
+            FlipSprite(inputDirection); 
         }
     }
-
-    //더블점프 초기화용 메소드
-    public void CanDoubleJump()
+    
+    //컨트롤러를 통해 실행될 메소드
+    //일반, 더블점프 로직
+    void PlayerStateController.ExecuteJump(float inputJumpForce)
     {
-        isDoubleJump = false;
-        canJump = true;
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, inputJumpForce);
     }
 
     //이미지 방향 전환
-    private void FlipSprite()
-    {
-        if (wallJumpTimer > 0f) return;
-        
-        if (horizontalInput > 0f)
+    private void FlipSprite(float direction)
+    {        
+        if (direction > 0f)
         {
             playerDirection = 1;
             transform.localScale = new Vector3(1, 1, 1);
         }
-        else if (horizontalInput < 0f)
+        else if (direction < 0f)
         {
             playerDirection = -1;
             transform.localScale = new Vector3(-1, 1, 1);
         }
     }
 
-    private bool IsJumping()
-    {
-        return rb.linearVelocity.y > 0;
-    }
-
-    private bool IsFalling()
-    {
-        if (!IsJumping() && !IsGrounded())
-        {
-            //착지판정을 위한 상태 변경
-            landing = true;
-            
-            //애니메이션 해제용
-            isDoubleJump = false;
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool IsGrounded()
+    private void CheckGrounded()
     {
         //만약 올라가는 도중이라면 착지할 수가 없음
         //플랫폼을 지날 때 추가로 점프가 되는걸 방지해줌
-        if (rb.linearVelocity.y > 0.01f) return false; 
-        
-        //박스의 크기를 넓고 얇게 정해줌
-        Vector2 boxSize = new Vector2(collider.bounds.size.x * 1f, 0.1f);
-
-        //박스의 위치를 플레이어의 가장 아래로 정해줌
-        Vector2 startPos = new Vector2(collider.bounds.center.x, collider.bounds.min.y);
-
-        //발바닥에서 아래로 박스캐스팅 진행
-        //부딪힌 무언가의 레이어가 그라운드, 플랫폼인 경우 착지판정
-        if (Physics2D.BoxCast(startPos, boxSize, 0f, Vector2.down, 0.1f, LayerMask.GetMask("Ground", "Platforms")))
+        if (rb.linearVelocity.y > 0.01f) 
         {
-            //공중에 있다가 땅에 닿은건지 확인
-            if (landing)
-            {
-                //무한 착지 판정 방지, 착지 파티클 출력
-                landing = false;
-                LandingDust();
-            }
-            
-            canJump = true;
-            return true;
+            isGrounded = false; 
+            return; 
         }
+        
+        //박스캐스트 상자 크기
+        Vector2 boxSize = new Vector2(collider.bounds.size.x * 0.95f, 0.05f);
+        
+        //캐스팅 시작 위치 및 거리
+        Vector2 origin = new Vector2(collider.bounds.center.x, collider.bounds.min.y + 0.05f);
+        float castDistance = 0.15f;
 
-        //아니라면 착지하지 않은 상태
-        return false;
+        //땅 확인
+        RaycastHit2D hit = Physics2D.BoxCast(origin, boxSize, 0f, Vector2.down, castDistance, LayerMask.GetMask("Ground", "Platforms"));
+
+        //땅이 확인됐다면 true
+        if (hit.collider != null)
+        {
+            isGrounded = true;
+        }
+        else
+        {
+            isGrounded = false;
+        }
     }
 
     //벽 판정용 메소드
@@ -198,12 +194,6 @@ public class Player : MonoBehaviour
         return false;
     }
 
-    //벽에서 미끄러지는 메소드
-    private void WallSlip()
-    {
-        rb.linearVelocity = new Vector2(0f, wallSlip * -1);
-    }
-
     //아이템 획득처리
     private void OnTriggerEnter2D(Collider2D collision)
     {
@@ -211,43 +201,26 @@ public class Player : MonoBehaviour
         {
             //추후 이펙트 오브젝트 자체를 없애줘야 함
             //스크립트 분리하면 그때 게임 매니저 등에서 처리
-            Instantiate(collectedPrefab, collision.transform.position, Quaternion.identity);
+            GameObject effect = Instantiate(collectedPrefab, collision.transform.position, Quaternion.identity);
             
             //아이템 획득 관련 이벤트 호출
             OnItemCollected?.Invoke();
 
-            collision.gameObject.SetActive(false);
+            //획득한 아이템 삭제
+            Destroy(collision.gameObject);
+            
+            StartCoroutine(DestroyEffect(effect));
         }
     }
-    
-    //애니메이션 전환용 메소드
-    private void UpdateAnimationState()
+
+    private IEnumerator DestroyEffect(GameObject effect)
     {
-        bool isRunning = Mathf.Abs(horizontalInput) > 0.1f;
-        animator.SetBool("isRunning", isRunning);
+        //약 1초 대기
+        yield return new WaitForSeconds(1f);
 
-        animator.SetBool("isGrounded", IsGrounded());
-
-        animator.SetBool("isJumping", IsJumping());
-
-        animator.SetBool("isFalling", IsFalling());
-
-        animator.SetBool("DoubleJump", isDoubleJump);
-
-        animator.SetBool("isWall", IsWall());
-        
-        animator.SetBool("isDead", playerDead);
+        Destroy(effect);
     }
     
-    //사망처리 시작용 메소드
-    private void HandleDeath(Vector2 bounceDir)
-    {
-        if (playerDead) return;
-        
-        //기존에 만들어둔 사망 로직 실행
-        GameOver(bounceDir);
-    }
-
     //함정, 몬스터에서 이벤트를 호출하기 위해 사용하는 통로용 메소드
     public void CallDeathEvent(Vector2 bounceDir)
     {
@@ -255,89 +228,39 @@ public class Player : MonoBehaviour
         OnPlayerDeath?.Invoke(bounceDir);
     }
 
-    //사망처리용 메소드
-    private void GameOver(Vector2 bounceDir)
+    //사망처리 시작용 메소드
+    private void HandleDeath(Vector2 bounceDir)
     {
-        //플레이어 사망처리, 블록 통과를 위한 트리거 활성화, 애니메이션 처리를 위한 트리거 설정
-        playerDead = true;
-        collider.isTrigger = true;
-        animator.SetTrigger("onHit");
-        
-        //디졸브를 위한 코루틴 실행
-        StartCoroutine(DieRoutine());
-        
-        //기존 속도 제거, z축 잠금 해제
-        rb.linearVelocity = Vector2.zero;
-        rb.constraints = RigidbodyConstraints2D.None;
-        
-        //위로 튕겨져 나가는 힘
-        bounceDir.y = Mathf.Abs(bounceDir.y) + 2f;
+        if (playerDead) return;
 
-        //충돌 방향의 반대로 튕겨져 나가는 힘
-        rb.AddForce(bounceDir * 10f, ForceMode2D.Impulse);
+        playerDead = true;
+        hitDirection = bounceDir;
         
-        //캐릭터 회전처리
-        rb.AddTorque(bounceDir.x * 5f, ForceMode2D.Impulse);
+        //피격 상태는 메인 로직에서 직접 실행
+        stateMachine.ChangeState(HitState);
     }
     
-    //디졸브 처리용 메소드
-    private IEnumerator DieRoutine()
-    {
-        float duration = 1.0f; //사라지는데 걸리는 총 시간
-        float elapsedTime = 0f;
-
-        //플레이어에 적용된 머티리얼을 가져옴
-        Material mat = playerRenderer.material;
-
-        while (elapsedTime < duration)
-        {
-            elapsedTime += Time.deltaTime;
-            
-            //시간에 따라 0에서 1로 부드럽게 변하는 값 계산 (Lerp)
-            float dissolveValue = Mathf.Lerp(0f, 1f, elapsedTime / duration);
-            
-            //쉐이더의 Dissolve 변수값 변경
-            mat.SetFloat("_Dissolve", dissolveValue);
-            
-            //다음 프레임까지 대기
-            yield return null;
-        }
-
-        //설정한 시간에 도달하면 오브젝트 파괴
-        Destroy(gameObject);
-    }
-
     //파티클 - 달리는 상황
+    //애니메이션 이벤트라 코드 이전 못하는중
+    //애니메이션 이벤트로 두지 말까?
     private void RunDust()
     {
         runDust.Emit(Random.Range(1,3));
     }
     
-    //파티클 - 점프 or 더블점프
-    public void JumpDust(bool wallJumped)
-    {
-        if (wallJumped && !IsGrounded())
-        {
-            //벽점프 파티클
-            wallJumpDust.Play();
-        }
-        else
-        {
-            //일반 점프 파티클
-            jumpDust.Play();
-        }
-    }
-
-    //파티클 - 착지
-    private void LandingDust()
-    {
-        landingDust.Play();
-    }
-
     //파티클 - 벽 슬라이딩
     private void WallSlipDust()
     {
         wallSlipDust.Play();
+    }
+
+    //몬스터 밟은 이후 더블점프 가능하게 변경
+    public void KillMonster(float bounce)
+    {
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); //기존 낙하 속도 초기화
+        rb.AddForce(Vector2.up * bounce, ForceMode2D.Impulse); //플레이어 위로 점프
+        canDoubleJump = true;
+        stateMachine.ChangeState(JumpState); //점프상태로 변경
     }
 
     //파괴될 때 이벤트 해제

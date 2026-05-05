@@ -26,6 +26,10 @@ namespace FSM
         public override void OnUpdate()
         {
             //상태 변환 처리(추락)
+            
+            //대시 입력 체크 후 대시처리
+            if(CheckDashAction()) return;
+            
             //추락 판정
             if (owner.Rb.linearVelocity.y <= -0.1f && !controller.IsGrounded)
             {

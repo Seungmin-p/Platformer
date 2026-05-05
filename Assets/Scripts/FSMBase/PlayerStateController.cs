@@ -12,6 +12,10 @@ namespace FSM
         bool IsGrounded { get; } //땅 판정
         bool IsWall { get; } //벽 판정
         float XInput { get; } //좌 우 이동값
+        float YInput { get; } //상 하 입력값
+        bool JumpInput { get; } //점프 액션 입력값
+        bool DashInput { get; } //대시 액션 입력값
+        bool CanDash { get; } //대시 액션 입력값
         float JumpForce { get; } //점프력
         float WallSlip { get; } //벽 미끄러짐 정도
         Vector2 HitDirection { get; } //무언가에 맞았을 때, 튕겨나갈 방향
@@ -24,5 +28,6 @@ namespace FSM
         //실행할 동작
         void ExecuteMove(float moveInput);
         void ExecuteJump(float jumpPower);
+        void ExecuteResetDashCooltime();
     }
 }

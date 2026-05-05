@@ -12,13 +12,17 @@ public class Player : MonoBehaviour, PlayerStateController
     [SerializeField] BoxCollider2D collider;
     [SerializeField] GameObject collectedPrefab;
     [SerializeField] SpriteRenderer playerRenderer;
+    [SerializeField] Material defaultRenderer;
+    [SerializeField] Material invincibleRenderer;
     
     //파티클처리용
     [SerializeField] ParticleSystem runDust;
+    [SerializeField] ParticleSystem dashDust;
     [SerializeField] ParticleSystem jumpDust;
     [SerializeField] ParticleSystem landingDust;
     [SerializeField] ParticleSystem wallSlipDust;
     [SerializeField] ParticleSystem wallJumpDust;
+    [SerializeField] ParticleSystem invincibleDust;
     
     //이동 속도, 점프 강도, 벽에서 미끄러지는 강도
     [SerializeField] float moveSpeed;
@@ -36,6 +40,7 @@ public class Player : MonoBehaviour, PlayerStateController
     //플레이어가 가질 수 있는 모든 상태
     public PlayerIdleState IdleState { get; private set; }
     public PlayerRunState RunState { get; private set; }
+    public PlayerDashState DashState { get; private set; }
     public PlayerJumpState JumpState { get; private set; }
     public PlayerFallState FallState { get; private set; }
     public PlayerWallSlipState WallSlipState { get; private set; }
@@ -48,15 +53,36 @@ public class Player : MonoBehaviour, PlayerStateController
     private bool canDoubleJump;
     private bool canJump;
     private float xInput;
+    private float yInput;
+    private bool jumpInput;
+    private bool dashInput;
+    private Vector2 dashDirection;
     private int playerDirection;
     private Vector2 hitDirection;
     private bool playerDead;
+    
+    //애니메이션 프레임 카운팅용
+    private readonly int frameCountPropertyId = Shader.PropertyToID("_FrameCount");
+
+    //무적 상태변수
+    //추후 별도 스크립트로 분리 가능
+    private bool isInvincible = false;
+    private float invincibleTime = 5.0f;
+    //몬스터에서 플레이어 무적 상태 판단 가능하도록 프로퍼티
+    public bool IsInvincible => isInvincible;
+    //마지막 스프라이트 기억해두는 변수
+    private Sprite lastSprite;
+    
+    //대시 제한용 변수
+    private float dashCoolTime = 1.0f;
+    private float dashTimer = 0f;
     
     //플레이어 컴포넌트 전달용
     public Animator Animator => animator;
     public Rigidbody2D Rb => rb;
     public BoxCollider2D Collider => collider;
     public SpriteRenderer PlayerRenderer => playerRenderer;
+    public ParticleSystem DashDust => dashDust;
     public ParticleSystem LandingDust => landingDust;
     public ParticleSystem JumpDust => jumpDust;
     public ParticleSystem WallJumpDust => wallJumpDust;
@@ -69,6 +95,10 @@ public class Player : MonoBehaviour, PlayerStateController
     bool PlayerStateController.CanDoubleJump { get => canDoubleJump; set => canDoubleJump = value; } //더블 점프 가능 상태인지
     int PlayerStateController.PlayerDirection { get => playerDirection; set => playerDirection = value; } //플레이어 보는 방향
     float PlayerStateController.XInput => xInput; //이동(왼쪽 오른쪽) 입력값
+    float PlayerStateController.YInput => yInput;
+    bool PlayerStateController.JumpInput => jumpInput;
+    bool PlayerStateController.DashInput => dashInput;
+    bool PlayerStateController.CanDash => dashTimer <= 0;
     float PlayerStateController.JumpForce => jumpForce; //점프력
     float PlayerStateController.WallSlip => wallSlip; //벽 미끄러짐 정도
     Vector2 PlayerStateController.HitDirection => hitDirection; //무언가에 맞았을 때, 튕겨나갈 방향
@@ -84,6 +114,7 @@ public class Player : MonoBehaviour, PlayerStateController
         
         IdleState = new PlayerIdleState(this, stateMachine);
         RunState = new PlayerRunState(this, stateMachine);
+        DashState = new PlayerDashState(this, stateMachine);
         FallState = new PlayerFallState(this, stateMachine);
         JumpState = new PlayerJumpState(this, stateMachine);
         DoubleJumpState = new PlayerDoubleJumpState(this, stateMachine);
@@ -99,10 +130,24 @@ public class Player : MonoBehaviour, PlayerStateController
 
     private void Update()
     {
+        //만약 죽은 상태면 무시
+        if(stateMachine.CurrentState == HitState) return;
+        
         //플레이어의 이동 입력 실시간으로 받기
-        xInput = Input.GetAxis("Horizontal");
+        PlayerInput();
+        
+        //대시 쿨타임 처리
+        if( dashTimer > 0 ) dashTimer -= Time.deltaTime;
         
         stateMachine.Update();
+    }
+
+    private void PlayerInput()
+    {
+        xInput = Input.GetAxisRaw("Horizontal");
+        yInput = Input.GetAxisRaw("Vertical");
+        jumpInput = Input.GetButtonDown("Jump");
+        dashInput = Input.GetKeyDown(KeyCode.LeftShift);
     }
     
     private void FixedUpdate()
@@ -111,6 +156,29 @@ public class Player : MonoBehaviour, PlayerStateController
         CheckGrounded();
         
         stateMachine.FixedUpdate();
+    }
+    
+    //LateUpdate를 통해 스프라이트 변경 체크 후, 프레임 갱신
+    //무적 상태 프레임 카운팅용
+    private void LateUpdate()
+    {
+        //만약 죽은 상태면 무시
+        if(stateMachine.CurrentState == HitState) return;
+        
+        // 무적 상태일 때만 체크합니다.
+        if (isInvincible)
+        {
+            // 방금 전까지 기억하던 스프라이트와 현재 스프라이트가 다르다면?
+            // (즉, 애니메이션이 바뀌었거나 프레임이 넘어갔다면)
+            if (playerRenderer.sprite != lastSprite)
+            {
+                // 쉐이더 프레임을 갱신하고
+                UpdateShaderFrameCount();
+            
+                // 현재 스프라이트를 '이전 스프라이트'로 덮어씌워 기억해 둡니다.
+                lastSprite = playerRenderer.sprite;
+            }
+        }
     }
     
     //컨트롤러를 통해 실행될 메소드
@@ -132,6 +200,13 @@ public class Player : MonoBehaviour, PlayerStateController
     void PlayerStateController.ExecuteJump(float inputJumpForce)
     {
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, inputJumpForce);
+    }
+
+    //컨트롤러를 통해 실행될 메소드
+    //대시 쿨타임 지정
+    void PlayerStateController.ExecuteResetDashCooltime()
+    {
+        dashTimer = dashCoolTime;
     }
 
     //이미지 방향 전환
@@ -187,7 +262,6 @@ public class Player : MonoBehaviour, PlayerStateController
         if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.right * playerDirection, 0.03f,
                 LayerMask.GetMask("Ground")))
         {
-            
             return true;
         }
 
@@ -197,8 +271,17 @@ public class Player : MonoBehaviour, PlayerStateController
     //아이템 획득처리
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        //만약 죽은 상태면 무시
+        if(stateMachine.CurrentState == HitState) return;
+        
         if (collision.gameObject.tag == "Item")
         {
+            //Diamond로 시작하는지 확인, 추후 아이템 종류가 늘어나면 enum으로 종류 분리
+            if (collision.gameObject.name.StartsWith("Diamond"))
+            {
+                ActiveInvincible(invincibleTime);
+            }
+            
             //추후 이펙트 오브젝트 자체를 없애줘야 함
             //스크립트 분리하면 그때 게임 매니저 등에서 처리
             GameObject effect = Instantiate(collectedPrefab, collision.transform.position, Quaternion.identity);
@@ -213,6 +296,47 @@ public class Player : MonoBehaviour, PlayerStateController
         }
     }
 
+    private void ActiveInvincible(float time)
+    {
+        //무적 아이템을 연속으로 먹는 경우를 위해 stop 후 start
+        StopCoroutine("InvincibilityRoutine");
+        StartCoroutine("InvincibilityRoutine", time);
+    }
+    
+    private IEnumerator InvincibilityRoutine(float time)
+    {
+        //무적 상태 활성화
+        isInvincible = true;
+        
+        //머티리얼 교체 및 프레임 계산
+        playerRenderer.material = invincibleRenderer; 
+        UpdateShaderFrameCount();
+        invincibleDust.Play();
+
+        //지정된 시간만큼 대기
+        yield return new WaitForSeconds(time);
+
+        //무적상태 비활성화
+        isInvincible = false;
+
+        //머티리얼 복구
+        playerRenderer.material = defaultRenderer;
+        invincibleDust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+    }
+    
+    //각종 상태패턴에서 애니메이션 변경될 때 마다 호출하는 메소드
+    private void UpdateShaderFrameCount()
+    {
+        //만약 무적 상태가 아니라면
+        if (!isInvincible) return;
+
+        //원본 텍스처 가로 길이 / 현재 프레임 1장의 가로 길이 = 총 가로 프레임 개수
+        float currentFrameCount = playerRenderer.sprite.texture.width / playerRenderer.sprite.rect.width;
+
+        //적용된 무적 쉐이더의 _FrameCount 속성에 값을 밀어넣음
+        playerRenderer.material.SetFloat(frameCountPropertyId, currentFrameCount);
+    }
+
     private IEnumerator DestroyEffect(GameObject effect)
     {
         //약 1초 대기
@@ -224,14 +348,18 @@ public class Player : MonoBehaviour, PlayerStateController
     //함정, 몬스터에서 이벤트를 호출하기 위해 사용하는 통로용 메소드
     public void CallDeathEvent(Vector2 bounceDir)
     {
-        //이벤트 호출
-        OnPlayerDeath?.Invoke(bounceDir);
+        if (!isInvincible)
+        {
+            //무언가에 맞았는데 플레이어가 무적이 아니라면 이벤트 호출
+            OnPlayerDeath?.Invoke(bounceDir);
+        }
     }
 
     //사망처리 시작용 메소드
     private void HandleDeath(Vector2 bounceDir)
     {
         if (playerDead) return;
+        if (isInvincible) return; //무적 상태라면 무시
 
         playerDead = true;
         hitDirection = bounceDir;

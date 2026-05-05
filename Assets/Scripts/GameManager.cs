@@ -5,10 +5,17 @@ using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
+    //게임 프레임 설정
+    [SerializeField] int fps = 60;
     //아이템 및 몬스터 수 카운팅용 변수
     private int currentItemCount;
     private int currentMonsterCount;
-    
+
+    private void Awake()
+    {
+        Application.targetFrameRate = fps;
+    }
+
     private void Start()
     {
         //씬이 시작될 때, 게임에 존재하는 오브젝트의 태그들로 아이템, 몬스터 수 파악

@@ -28,6 +28,21 @@ namespace FSM
         {
             controller = owner as PlayerStateController;
         }
+
+        //대시 체크 후 상태변환을 진행하는 메소드
+        //이후 코드 실행 방지를 위한 bool 타입
+        protected bool CheckDashAction()
+        {
+            //대시 입력이 됐고, 가능한 상태라면
+            if (controller.DashInput && controller.CanDash)
+            {
+                stateMachine.ChangeState(owner.DashState);
+                
+                return true;
+            }
+            
+            return false;
+        }
     }
 
     //몬스터 전용 상태(컨트롤러 할당용)

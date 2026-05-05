@@ -24,7 +24,7 @@ namespace FSM
             //상태 변환 처리(벽점프, 착지, 추락)
             
             //점프가 가능한 상태면 벽 점프
-            if (Input.GetButtonDown("Jump") && controller.CanJump)
+            if (controller.JumpInput && controller.CanJump)
             {
                 stateMachine.ChangeState(owner.WallJumpState);
                 return;

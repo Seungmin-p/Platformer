@@ -81,18 +81,18 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     {
         if (collision.gameObject.CompareTag("Player"))
         {
-            //플레이어와 부딪힌 방향을 가져옴
+            //플레이어와 부딪힌 방향 및 플레이어 스크립트를 가져옴
             Vector2 normal = collision.GetContact(0).normal;
+            Player player = collision.gameObject.GetComponent<Player>();
+            
+            //몬스터가 날아갈 방향 계산 (플레이어 위치 -> 몬스터 위치)
+            Vector2 bounceDir = ((Vector2)(transform.position - collision.transform.position)).normalized;
             
             //만약 밟힌 방향이 -0.5f보다 작다면, 플레이어가 위에서 밟았다는 의미
             //플레이어 기준으로 공중 플랫폼을 밟은 방향의 위치가 메인이기 때문에 y는 +가 아니라 -인게 맞음
             if (normal.y < -0.5f)
             {
-                //몬스터가 날아갈 방향 계산 (플레이어 위치 -> 몬스터 위치)
-                Vector2 bounceDir = ((Vector2)(transform.position - collision.transform.position)).normalized;
-
                 //플레이어의 몬스터 처치 메소드 실행
-                Player player = collision.gameObject.GetComponent<Player>();
                 if (player != null)
                 {
                     player.KillMonster(20f);
@@ -103,8 +103,16 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
                 return;
             }
             
-            //위에서 밟히지 않은 경우
-            TriggerDeath(collision.gameObject, collision.GetContact(0).point);
+            //위에서 밟히지 않은 경우 플레이어 무적상태 확인
+            if (player.IsInvincible)
+            {
+                TakeHit(bounceDir);
+            }
+            else
+            {
+                //플레이어가 무적이 아니라면 사망 트리거 호출
+                TriggerDeath(collision.gameObject, collision.GetContact(0).point);
+            }
         }
     }
     
@@ -112,7 +120,7 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     {
         //몬스터 사망 관련 이벤트 세팅 후 호출
         DeadState.Setup(bounceDir);
-        OnMonsterDefeated.Invoke();
+        OnMonsterDefeated?.Invoke();
 
         //몬스터 사망 상태 변경
         stateMachine.ChangeState(DeadState);

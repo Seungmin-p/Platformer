@@ -17,10 +17,17 @@ namespace FSM
             //점프 가능 여부 초기화
             controller.CanJump = true;
             controller.CanDoubleJump = true;
+            
+            //이동속도 초기화
+            controller.ExecuteMove(0f);
         }
         public override void OnUpdate()
         {
             //상태 변환 처리
+            
+            //대시 입력 체크 후 대시처리
+            if(CheckDashAction()) return;
+            
             //추락상태 변환
             if (owner.Rb.linearVelocity.y <= -0.1f && !controller.IsGrounded)
             {
@@ -29,7 +36,7 @@ namespace FSM
             }
             
             //점프 상태 변환
-            if (Input.GetButtonDown("Jump") && (controller.CanJump || controller.IsWall) )
+            if (controller.JumpInput && (controller.CanJump || controller.IsWall) )
             {
                 stateMachine.ChangeState(owner.JumpState);
                 return;

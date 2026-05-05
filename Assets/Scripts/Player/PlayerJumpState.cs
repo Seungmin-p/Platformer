@@ -36,8 +36,11 @@ namespace FSM
             
             //상태 변환 처리(더블점프, 추락, 바닥판정)
             
+            //대시 입력 체크 후 대시처리
+            if(CheckDashAction()) return;
+            
             //더블점프가 가능한 상태면 더블점프
-            if (Input.GetButtonDown("Jump") && controller.CanDoubleJump)
+            if (controller.JumpInput && controller.CanDoubleJump)
             {
                 stateMachine.ChangeState(owner.DoubleJumpState);
                 return;

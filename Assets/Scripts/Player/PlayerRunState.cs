@@ -22,6 +22,10 @@ namespace FSM
         public override void OnUpdate()
         {            
             //상태 변환 처리
+            
+            //대시 입력 체크 후 대시처리
+            if(CheckDashAction()) return;
+            
             //추락상태 변환
             if ( !controller.IsGrounded )
             {
@@ -30,7 +34,7 @@ namespace FSM
             }
             
             //점프 상태 변환
-            if (Input.GetButtonDown("Jump") && (controller.CanJump || controller.IsWall) )
+            if (controller.JumpInput && (controller.CanJump || controller.IsWall) )
             {
                 stateMachine.ChangeState(owner.JumpState);
                 return;

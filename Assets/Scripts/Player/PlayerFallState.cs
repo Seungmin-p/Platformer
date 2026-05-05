@@ -21,6 +21,9 @@ namespace FSM
         {
             //상태 변환 처리(착지(idle,run), 더블점프, 벽)
             
+            //대시 입력 체크 후 대시처리
+            if(CheckDashAction()) return;
+            
             //착지 판정
             if (controller.IsGrounded)
             {
@@ -40,7 +43,7 @@ namespace FSM
             }
             
             //더블점프가 가능한 상태면 더블점프
-            if (Input.GetButtonDown("Jump") && controller.CanDoubleJump)
+            if (controller.JumpInput && controller.CanDoubleJump)
             {
                 stateMachine.ChangeState(owner.DoubleJumpState);
                 return;

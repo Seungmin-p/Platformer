@@ -7,7 +7,7 @@ namespace FSM
         //애니메이션 전환의 성능 향상을 위해 미리 해쉬값으로 변환해둠
         private static readonly int animHash = Animator.StringToHash("Run");
         
-        public MonsterRunState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine) {}
+        public MonsterRunState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine) {}
 
         public override void OnEnter()
         {

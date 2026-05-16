@@ -8,7 +8,7 @@ namespace FSM
         private static readonly int animHash = Animator.StringToHash("Idle");
         private Chicken chicken; //Chicken 본체를 담는 변수
 
-        public MonsterChickenStopState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine)
+        public MonsterChickenStopState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine)
         {
             //owner를 Chicken으로 형변환 해서 저장
             chicken = (Chicken)owner;

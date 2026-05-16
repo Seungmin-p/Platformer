@@ -14,6 +14,7 @@ public class Player : MonoBehaviour, PlayerStateController
     [SerializeField] SpriteRenderer playerRenderer;
     [SerializeField] Material defaultRenderer;
     [SerializeField] Material invincibleRenderer;
+    [SerializeField] FSMGraph.FSMRuntimeGraph fsmGraphAsset; //상태머신 그래프
     
     //파티클처리용
     [SerializeField] ParticleSystem runDust;
@@ -35,17 +36,9 @@ public class Player : MonoBehaviour, PlayerStateController
     //============ 상태패턴용 ============
     //현재 상태 및 상태머신
     private IState currentState;
-    private StateMachine stateMachine;
+    private StateMachine<Player> stateMachine;
     
     //플레이어가 가질 수 있는 모든 상태
-    public PlayerIdleState IdleState { get; private set; }
-    public PlayerRunState RunState { get; private set; }
-    public PlayerDashState DashState { get; private set; }
-    public PlayerJumpState JumpState { get; private set; }
-    public PlayerFallState FallState { get; private set; }
-    public PlayerWallSlipState WallSlipState { get; private set; }
-    public PlayerWallJumpState WallJumpState { get; private set; }
-    public PlayerDoubleJumpState DoubleJumpState { get; private set; }
     public PlayerHitState HitState { get; private set; }
     
     //상태패턴 개편용 새로운 변수들
@@ -54,6 +47,7 @@ public class Player : MonoBehaviour, PlayerStateController
     private bool canJump;
     private float xInput;
     private float yInput;
+    private bool isFall;
     private bool jumpInput;
     private bool dashInput;
     private Vector2 dashDirection;
@@ -87,51 +81,56 @@ public class Player : MonoBehaviour, PlayerStateController
     public ParticleSystem JumpDust => jumpDust;
     public ParticleSystem WallJumpDust => wallJumpDust;
     
-    //상태 체크용 변수
-    //다른 스크립트에서 코드를 작성하다가 실수로 사용하지 못하게 컨트롤러 통해서 관리
-    bool PlayerStateController.IsGrounded => isGrounded; //땅 체크
-    bool PlayerStateController.IsWall => IsWall(); //벽 체크
-    bool PlayerStateController.CanJump { get => canJump; set => canJump = value; } //점프 가능 상태인지
-    bool PlayerStateController.CanDoubleJump { get => canDoubleJump; set => canDoubleJump = value; } //더블 점프 가능 상태인지
-    int PlayerStateController.PlayerDirection { get => playerDirection; set => playerDirection = value; } //플레이어 보는 방향
-    float PlayerStateController.XInput => xInput; //이동(왼쪽 오른쪽) 입력값
-    float PlayerStateController.YInput => yInput;
-    bool PlayerStateController.JumpInput => jumpInput;
-    bool PlayerStateController.DashInput => dashInput;
-    bool PlayerStateController.CanDash => dashTimer <= 0;
-    float PlayerStateController.JumpForce => jumpForce; //점프력
-    float PlayerStateController.WallSlip => wallSlip; //벽 미끄러짐 정도
-    Vector2 PlayerStateController.HitDirection => hitDirection; //무언가에 맞았을 때, 튕겨나갈 방향
+    //FSM 그래프를 위한 임시 프로퍼티
+    public float MoveSpeed => moveSpeed;
+    public bool IsGrounded => isGrounded; //땅 체크
+    public bool IsWall => WallCheck(); //벽 체크
+    public bool CanJump { get => canJump; set => canJump = value; } //점프 가능 상태인지
+    public bool CanDoubleJump { get => canDoubleJump; set => canDoubleJump = value; } //더블 점프 가능 상태인지
+    public int PlayerDirection { get => playerDirection; set => playerDirection = value; } //플레이어 보는 방향
+    public float XInput => xInput; //이동(왼쪽 오른쪽) 입력값
+    public float YInput => yInput; //위 아래 입력값
+    public bool IsFall => Rb.linearVelocity.y <= -0.1f;
+    public bool JumpInput => jumpInput;
+    public bool DashInput => dashInput;
+    public bool CanDash => dashTimer <= 0;
+    public float JumpForce => jumpForce; //점프력
+    public float WallSlip => wallSlip; //벽 미끄러짐 정도
+    public Vector2 HitDirection => hitDirection; //무언가에 맞았을 때, 튕겨나갈 방향
+    public bool IsFirstLanded { get; set; } = true;
+    public bool IsDashFinished { get; set; }
+    public bool IsEnemyStepped { get; set; }
+    
+    //벽의 반대방향 입력이 들어와도 일단 추락판정
+    //왼쪽(-1)이나 오른쪽(1)을 볼 때 반대 입력이 들어왔다면, 두 입력을 곱하면 항상 음수가 된다.
+    public bool IsOppositionMove => Mathf.Abs(xInput) > 0.1f && (xInput * playerDirection < 0);
     
     private void Awake()
     {
         //이벤트 구독처리
         //외부에서 이벤트 호출용 메소드를 호출하면 사망이벤트 진행
         OnPlayerDeath += HandleDeath;
-        
-        //상태 머신, 상태 초기화
-        stateMachine = new StateMachine();
-        
-        IdleState = new PlayerIdleState(this, stateMachine);
-        RunState = new PlayerRunState(this, stateMachine);
-        DashState = new PlayerDashState(this, stateMachine);
-        FallState = new PlayerFallState(this, stateMachine);
-        JumpState = new PlayerJumpState(this, stateMachine);
-        DoubleJumpState = new PlayerDoubleJumpState(this, stateMachine);
-        WallJumpState = new PlayerWallJumpState(this, stateMachine);
-        WallSlipState = new PlayerWallSlipState(this, stateMachine);
-        HitState = new PlayerHitState(this, stateMachine);
     }
 
     private void Start()
     {
-        stateMachine.ChangeState(IdleState);
+        // stateMachine.ChangeState(IdleState);
+        
+        if (fsmGraphAsset != null)
+        {
+            // 그래프 에셋(설계도)에게 나(this)를 주면, 내부의 CreateStateMachine 함수가 
+            // 노드들을 읽어 완성된 상태 머신을 반환해 줍니다.
+            stateMachine = fsmGraphAsset.CreateStateMachine(this);
+        }
     }
 
     private void Update()
     {
         //만약 죽은 상태면 무시
         if(stateMachine.CurrentState == HitState) return;
+
+        //땅 체크
+        CheckGrounded();
         
         //플레이어의 이동 입력 실시간으로 받기
         PlayerInput();
@@ -152,9 +151,6 @@ public class Player : MonoBehaviour, PlayerStateController
     
     private void FixedUpdate()
     {
-        //땅 체크
-        CheckGrounded();
-        
         stateMachine.FixedUpdate();
     }
     
@@ -256,7 +252,7 @@ public class Player : MonoBehaviour, PlayerStateController
     }
 
     //벽 판정용 메소드
-    private bool IsWall()
+    private bool WallCheck()
     {
         //보는 방향 바로앞에 그라운드 레이어 벽이 있다면 벽 판정
         if (Physics2D.BoxCast(collider.bounds.center, collider.bounds.size, 0f, Vector2.right * playerDirection, 0.03f,
@@ -311,6 +307,9 @@ public class Player : MonoBehaviour, PlayerStateController
         //머티리얼 교체 및 프레임 계산
         playerRenderer.material = invincibleRenderer; 
         UpdateShaderFrameCount();
+        
+        var emission = invincibleDust.emission;
+        emission.enabled = true;
         invincibleDust.Play();
 
         //지정된 시간만큼 대기
@@ -365,7 +364,7 @@ public class Player : MonoBehaviour, PlayerStateController
         hitDirection = bounceDir;
         
         //피격 상태는 메인 로직에서 직접 실행
-        stateMachine.ChangeState(HitState);
+        stateMachine.ChangeState(new PlayerHitState(this, stateMachine));
     }
     
     //파티클 - 달리는 상황
@@ -388,7 +387,7 @@ public class Player : MonoBehaviour, PlayerStateController
         rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0); //기존 낙하 속도 초기화
         rb.AddForce(Vector2.up * bounce, ForceMode2D.Impulse); //플레이어 위로 점프
         canDoubleJump = true;
-        stateMachine.ChangeState(JumpState); //점프상태로 변경
+        IsEnemyStepped = true; //점프상태로 변경용 변수
     }
 
     //파괴될 때 이벤트 해제

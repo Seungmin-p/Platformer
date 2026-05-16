@@ -8,7 +8,7 @@ namespace FSM
         private static readonly int animHash = Animator.StringToHash("Idle");
         private float waitTime;
         
-        public MonsterIdleState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine) {}
+        public MonsterIdleState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine) {}
 
         public override void OnEnter()
         {

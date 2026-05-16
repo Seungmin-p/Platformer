@@ -22,7 +22,7 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     
     //현재 상태 및 상태머신
     protected IState currentState;
-    protected StateMachine stateMachine;
+    protected StateMachine<Monster> stateMachine;
     
     //몬스터가 공통적으로 갖는 상태
     public MonsterIdleState IdleState { get; private set; }
@@ -49,7 +49,7 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     protected virtual void Awake()
     {
         //상태 머신, 상태 초기화
-        stateMachine = new StateMachine();
+        stateMachine = new StateMachine<Monster>();
         
         IdleState = new MonsterIdleState(this, stateMachine);
         RunState = new MonsterRunState(this, stateMachine);

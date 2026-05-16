@@ -11,7 +11,7 @@ namespace FSM
         
         private bool isRunning;
 
-        public MonsterChickenChaseState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine)
+        public MonsterChickenChaseState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine)
         {
             //owner를 Chicken으로 형변환 해서 저장
             chicken = (Chicken)owner;

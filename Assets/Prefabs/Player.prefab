@@ -20385,7 +20385,7 @@ ParticleSystem:
           m_PostInfinity: 2
           m_RotationOrder: 4
   EmissionModule:
-    enabled: 1
+    enabled: 0
     serializedVersion: 4
     rateOverTime:
       serializedVersion: 2
@@ -24630,6 +24630,7 @@ MonoBehaviour:
   playerRenderer: {fileID: 7670754741527880651}
   defaultRenderer: {fileID: 2100000, guid: 9a80ea237672a37498a4649e8cca1aeb, type: 2}
   invincibleRenderer: {fileID: 2100000, guid: 5163d96d58f1bd94394eb390e122dc72, type: 2}
+  fsmGraphAsset: {fileID: 2841676755933307327, guid: 9333995515f35a8438baa33e5fa3f4fe, type: 3}
   runDust: {fileID: 5300273234631931509}
   dashDust: {fileID: 2599202764938889861}
   jumpDust: {fileID: 8038845349838933540}
@@ -35293,7 +35294,7 @@ ParticleSystem:
           m_PostInfinity: 2
           m_RotationOrder: 4
   EmissionModule:
-    enabled: 1
+    enabled: 0
     serializedVersion: 4
     rateOverTime:
       serializedVersion: 2

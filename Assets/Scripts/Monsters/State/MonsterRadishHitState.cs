@@ -8,7 +8,7 @@ namespace FSM
         private static readonly int animHash = Animator.StringToHash("Hit");
         private Radish radish; //Radish 본체를 담는 변수
 
-        public MonsterRadishHitState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine)
+        public MonsterRadishHitState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine)
         {
             //owner를 Radish로 형변환 해서 저장
             radish = (Radish)owner;

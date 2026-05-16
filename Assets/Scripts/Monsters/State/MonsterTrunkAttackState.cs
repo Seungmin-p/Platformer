@@ -11,7 +11,7 @@ namespace FSM
         private bool hasAttack;
         private Trunk trunk; //Trunk 본체를 담는 변수
 
-        public MonsterTrunkAttackState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine)
+        public MonsterTrunkAttackState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine)
         {
             //owner를 Trunk로 형변환 해서 저장
             trunk = (Trunk)owner;

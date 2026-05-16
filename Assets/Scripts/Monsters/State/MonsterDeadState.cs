@@ -5,7 +5,7 @@ namespace FSM
     public class MonsterDeadState : MonsterState
     {
         private Vector2 bounceDirection;
-        public MonsterDeadState(Monster owner, StateMachine stateMachine) : base(owner, stateMachine) {}
+        public MonsterDeadState(Monster owner, StateMachine<Monster> stateMachine) : base(owner, stateMachine) {}
 
         //bounceDir 전달용
         public void Setup(Vector2 bounceDir)

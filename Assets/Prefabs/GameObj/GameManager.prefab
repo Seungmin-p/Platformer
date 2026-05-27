@@ -45,3 +45,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   fps: 240
+  playerPrefab: {fileID: 549586765636306392, guid: b591afba5643faa40b79b0e8fcc52d30, type: 3}

@@ -6,7 +6,7 @@ namespace FSMGraph
     [Serializable]
     public class TransitionStatePair
     {
-        public TransitionProperties Properties;
+        public ITransitionProperty Properties;
         public Func<State<Player>> NextStateFactory;
     }
 }

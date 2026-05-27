@@ -14,8 +14,9 @@ namespace FSMGraph
     }
 
     [CreateAssetMenu(menuName = "FSM/Transition Properties", fileName = "TransitionProperties")]
-    public class TransitionProperties : ScriptableObject
+    public class TransitionProperties : ScriptableObject, ITransitionProperty
     {
+        //컨디션 리스트 추가
         public string ButtonDown;
         public bool IsGrounded;
         public bool IsFall;
@@ -32,6 +33,7 @@ namespace FSMGraph
 
         public bool CanChangeState(Player owner)
         {
+            //TODO : 컨디션 루프
             if (!string.IsNullOrEmpty(ButtonDown) && !Input.GetButtonDown(ButtonDown))
                 return false;
 

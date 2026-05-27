@@ -34,7 +34,12 @@ namespace FSMGraph
                     TransitionNode transitionNode => new FSMRuntimeTransitionNode
                     {
                         Id = Guid.NewGuid().ToString(),
-                        Properties = CreateTransitionProperties(ctx, transitionNode),
+                        TransitionProperties = CreateTransitionProperties(ctx, transitionNode),
+                    },
+                    FSMContextNode contextNode => new FSMRuntimeTransitionNode
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        ContextProperties = CreateContextProperties(contextNode)
                     },
                     StartNode _ => new FSMRuntimeStartNode { Id = Guid.NewGuid().ToString() },
                     _ => null,
@@ -45,6 +50,20 @@ namespace FSMGraph
                     runtimeAsset.Nodes.Add(runtimeNode);
                     nodeMap[node] = runtimeNode;
                 }
+            }
+            
+            static ContextProperties CreateContextProperties(FSMContextNode contextNode)
+            {
+                var props = new ContextProperties();
+
+                foreach (var block in contextNode.blockNodes)
+                {
+                    if (block is IConditionBlockNode conditionBlock)
+                    {
+                        props.Conditions.Add(conditionBlock.CreateRuntimeCondition());
+                    }
+                }
+                return props;
             }
 
             static TransitionProperties CreateTransitionProperties(AssetImportContext context, TransitionNode transitionNode)
@@ -86,23 +105,25 @@ namespace FSMGraph
 
             foreach (var node in graph.GetNodes())
             {
-                var outputPort = node.GetOutputPortByName(FSMNode.EXECUTION_PORT_DEFAULT_NAME);
-                if (outputPort == null)
-                    continue;
+                var outputPorts = node.GetOutputPorts();
+                if (outputPorts == null) continue;
 
-                var connectedPorts = new List<IPort>();
-                outputPort.GetConnectedPorts(connectedPorts);
-
-                foreach (var connectedPort in connectedPorts)
+                foreach (var port in outputPorts)
                 {
-                    var toNode = connectedPort.GetNode();
-                    if (nodeMap.TryGetValue(node, out var fromRuntimeNode) && nodeMap.TryGetValue(toNode, out var toRuntimeNode))
+                    var connectedPorts = new List<IPort>();
+                    port.GetConnectedPorts(connectedPorts);
+
+                    foreach (var connectedPort in connectedPorts)
                     {
-                        runtimeAsset.Connections.Add(new FSMRuntimeConnection
+                        var toNode = connectedPort.GetNode();
+                        if (nodeMap.TryGetValue(node, out var fromRuntimeNode) && nodeMap.TryGetValue(toNode, out var toRuntimeNode))
                         {
-                            FromNodeId = fromRuntimeNode.Id,
-                            ToNodeId = toRuntimeNode.Id,
-                        });
+                            runtimeAsset.Connections.Add(new FSMRuntimeConnection
+                            {
+                                FromNodeId = fromRuntimeNode.Id,
+                                ToNodeId = toRuntimeNode.Id,
+                            });
+                        }
                     }
                 }
             }

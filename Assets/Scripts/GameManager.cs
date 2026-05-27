@@ -5,15 +5,43 @@ using System.Collections;
 
 public class GameManager : MonoBehaviour
 {
+    public static GameManager Instance { get; private set; }
+    
     //게임 프레임 설정
     [SerializeField] int fps = 60;
+    
+    //플레이어
+    [SerializeField] Player playerPrefab;
+    
     //아이템 및 몬스터 수 카운팅용 변수
     private int currentItemCount;
     private int currentMonsterCount;
 
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            // 이미 존재하므로, 새로 생성된 중복 오브젝트는 즉시 파괴
+            Destroy(gameObject);
+            return;
+        }
+
+        // 최초 생성된 인스턴스를 static 변수에 저장
+        Instance = this;
+
+        // 씬이 전환되어도 이 오브젝트(GameManager)를 파괴하지 않고 유지
+        DontDestroyOnLoad(gameObject);
+
+        // 여기에 게임 시작 시 필요한 초기화 로직을 작성합니다.
+        InitializeGame();
+        
         Application.targetFrameRate = fps;
+    }
+    
+    private void InitializeGame()
+    {
+        Debug.Log("[GameManager] 게임 시스템 초기화 완료.");
+        // 추후 이곳에서 초기 맵 생성 명령이나 플레이어 배치 등을 제어하게 됩니다.
     }
 
     private void Start()

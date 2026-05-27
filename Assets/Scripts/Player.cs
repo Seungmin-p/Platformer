@@ -6,6 +6,8 @@ using FSM;
 
 public class Player : MonoBehaviour, PlayerStateController
 {
+    public static Player Instance { get; private set; }
+    
     //각종 컴포넌트
     [SerializeField] Animator animator;
     [SerializeField] Rigidbody2D rb;
@@ -107,6 +109,19 @@ public class Player : MonoBehaviour, PlayerStateController
     
     private void Awake()
     {
+        if (Instance != null && Instance != this)
+        {
+            // 이미 존재하므로, 새로 생성된 중복 오브젝트는 즉시 파괴
+            Destroy(gameObject);
+            return;
+        }
+
+        // 최초 생성된 인스턴스를 static 변수에 저장
+        Instance = this;
+
+        // 씬이 전환되어도 이 오브젝트(GameManager)를 파괴하지 않고 유지
+        DontDestroyOnLoad(gameObject);
+        
         //이벤트 구독처리
         //외부에서 이벤트 호출용 메소드를 호출하면 사망이벤트 진행
         OnPlayerDeath += HandleDeath;

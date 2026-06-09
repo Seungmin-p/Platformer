@@ -94,7 +94,7 @@ public class GameManager : MonoBehaviour
         if (currentItemCount <= 0 && currentMonsterCount <= 0)
         {
             //스테이지 클리어
-            StartCoroutine(StageClearRoutine());
+            // StartCoroutine(StageClearRoutine());
         }
     }
     

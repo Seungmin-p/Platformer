@@ -1,0 +1,20 @@
+<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="Inventory" style="flex-grow: 0; width: 800px; height: 900px; background-color: rgb(36, 36, 36); position: absolute;">
+        <ui:VisualElement name="Header-Area" style="flex-grow: 0; height: 80px; max-height: none; background-color: rgb(55, 55, 55); justify-content: center;">
+            <ui:Button text="X" name="btn-close" style="align-self: flex-end; align-items: auto; justify-content: flex-start; width: 50px; height: 50px; font-size: 30px; -unity-font-style: bold; background-color: rgb(178, 45, 45); margin-right: 20px; border-left-color: rgb(255, 64, 64); border-right-color: rgb(255, 64, 64); border-top-color: rgb(255, 64, 64); border-bottom-color: rgb(255, 64, 64);"/>
+        </ui:VisualElement>
+        <ui:VisualElement name="Button-Area" picking-mode="Ignore" style="flex-grow: 0; height: 70px; background-color: rgb(26, 26, 26); flex-direction: row;">
+            <ui:VisualElement name="sort-area" style="flex-grow: 1; align-self: center; flex-direction: row; align-items: flex-start; padding-left: 10px; width: 50%;">
+                <ui:Button text="Trim" name="btn-trim" style="width: 90px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); margin-right: 10px; color: rgb(224, 224, 224);"/>
+                <ui:Button text="Sort" name="btn-sort" style="width: 90px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); color: rgb(224, 224, 224);"/>
+            </ui:VisualElement>
+            <ui:VisualElement name="filter-area" style="flex-grow: 1; flex-direction: row; align-self: center; align-content: auto; width: 50%; align-items: auto; justify-content: flex-end;">
+                <ui:Button text="A" name="btn-filter-all" style="width: 50px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); margin-right: 10px; color: rgb(224, 224, 224);"/>
+                <ui:Button text="E" name="btn-filter-equip" style="width: 50px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); margin-right: 10px; color: rgb(224, 224, 224);"/>
+                <ui:Button text="C" name="btn-filter-consume" style="width: 50px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); margin-right: 10px; color: rgb(224, 224, 224);"/>
+                <ui:Button text="M" name="btn-filter-material" style="width: 50px; height: 40px; border-top-left-radius: 3px; border-top-right-radius: 3px; border-bottom-right-radius: 3px; border-bottom-left-radius: 3px; font-size: 25px; -unity-font-style: bold; background-color: rgb(101, 101, 101); margin-right: 10px; color: rgb(224, 224, 224);"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="Slot-Area" picking-mode="Ignore" style="flex-grow: 1; flex-direction: row; flex-wrap: wrap; padding-top: 0; padding-right: 0; padding-bottom: 0; padding-left: 0; background-color: rgb(36, 36, 36); align-items: flex-start; justify-content: flex-start; align-self: auto; flex-shrink: 1; width: auto; align-content: auto;"/>
+    </ui:VisualElement>
+</ui:UXML>

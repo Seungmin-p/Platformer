@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 5518762383970937061}
   - component: {fileID: 1671620055949357600}
   - component: {fileID: 5138781474017955831}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: Spikes
   m_TagString: Trap
   m_Icon: {fileID: 0}
@@ -29,7 +29,7 @@ Transform:
   m_GameObject: {fileID: 2287722478621485079}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.004, y: 0.011, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -167,13 +167,14 @@ PolygonCollider2D:
   m_AutoTiling: 0
   m_Points:
     m_Paths:
-    - - {x: 0.4375, y: -0.375}
-      - {x: 0.25, y: -0.0625}
-      - {x: -0.3125, y: -0.0625}
-      - {x: -0.375, y: -0.125}
-      - {x: -0.5, y: -0.375}
-      - {x: -0.5, y: -0.5}
-      - {x: 0.4375, y: -0.5}
+    - - {x: 0.37521946, y: -0.42275348}
+      - {x: 0.37498125, y: -0.37501955}
+      - {x: 0.2197801, y: -0.12524188}
+      - {x: -0.2833724, y: -0.12507698}
+      - {x: -0.3070097, y: -0.16108584}
+      - {x: -0.4374784, y: -0.37510428}
+      - {x: -0.437512, y: -0.50013894}
+      - {x: 0.37498507, y: -0.5000366}
   m_UseDelaunayMesh: 1
 --- !u!114 &5138781474017955831
 MonoBehaviour:

@@ -1,0 +1,248 @@
+using UnityEngine;
+using UnityEngine.UIElements;
+using System;
+
+namespace MyInventory
+{
+    public class ItemSlotView
+    {
+        //각종 UI 처리용
+        private readonly VisualElement _rootElement;
+        private readonly VisualElement _iconElement;
+        private readonly Label _countLabel;
+        private readonly VisualElement _screenRoot;
+        private readonly VisualElement _highlightElement;
+        
+        //하이라이트 처리 색상
+        private static readonly Color HighlightBgColor = new Color(1f, 1f, 1f, 0.12f); 
+        private static readonly Color HighlightBorderColor = new Color(1f, 0.84f, 0f, 1f); 
+        
+        //뷰 모델, 인덱스, 더블클릭 판정용
+        private ItemSlotViewModel _viewModel;
+        private readonly int _index;      
+        private float _lastClickTime;
+        private const float DOUBLE_CLICK_THRESHOLD = 0.2f;
+        
+        //아이템 이동, 사용, 버리기
+        private readonly Action<int, int> _onDropRequest; 
+        private readonly Action<int> _onUseRequest;
+        private readonly Action<int> _onDeleteRequest;
+
+        //마우스가 슬롯 영역에 들어오고, 안에서 움직이고, 나가는 부분에 대한 판정용 이벤트 
+        public event Action<ItemData, Vector2> OnPointerEnterSlot;
+        public event Action<Vector2> OnPointerMoveSlot; 
+        public event Action OnPointerExitSlot;
+        
+        //아이템 분할처리용
+        public event Action<int, int> OnSplitDropRequested;
+
+        public ItemSlotView(VisualElement slotVisualElement, VisualElement screenRoot, int index, 
+                            Action<int, int> onDropRequest, Action<int> onUseRequest, Action<int> onDeleteRequest)
+        {
+            //전달받은 각종 데이터 저장
+            _rootElement = slotVisualElement;
+            _screenRoot = screenRoot;
+            _index = index;
+            _onDropRequest = onDropRequest;
+            _onDeleteRequest = onDeleteRequest;
+            _onUseRequest = onUseRequest;
+    
+            _iconElement = _rootElement.Q<VisualElement>("Item-Icon");
+            _countLabel = _rootElement.Q<Label>("Item-Count");
+            _highlightElement = _rootElement.Q<VisualElement>("Item-Highlight");
+
+            //ItemDragManipulator 인스턴스 확보
+            var dragManipulator = new ItemDragManipulator(_screenRoot, _index, () => _viewModel?.HasItem ?? false, _onDropRequest, _onDeleteRequest);
+            
+            //아이템 이동 시, 쉬프트를 누르고 이동했다면 실행될 내용 구독
+            dragManipulator.OnSplitDropRequest += (fromIdx, toIdx) => OnSplitDropRequested?.Invoke(fromIdx, toIdx);
+            
+            //드래그 조작기 등록
+            _rootElement.AddManipulator(dragManipulator);
+
+            //클릭, 진입, 이동, 이탈 감지용
+            _rootElement.RegisterCallback<PointerDownEvent>(OnPointerDown);
+            _rootElement.RegisterCallback<PointerEnterEvent>(OnPointerEnter);
+            _rootElement.RegisterCallback<PointerMoveEvent>(OnPointerMove);
+            _rootElement.RegisterCallback<PointerLeaveEvent>(OnPointerLeave);
+        }
+        
+        //인벤토리 뷰를 통해 호출되는 뷰모델 바인딩
+        public void Bind(ItemSlotViewModel viewModel)
+        {
+            _viewModel = viewModel;
+            //슬롯 데이터가 변경될 때 마다 렌더 실행
+            _viewModel.OnStateChanged += Render;
+            Render();
+        }
+        
+        //슬롯의 뷰 모델 데이터가 변하면
+        private void Render()
+        {
+            if (_viewModel == null) return;
+
+            //필터 밖이면 하이라이트, 팝업 제외
+            if (_viewModel.IsFilteredOut)
+            {
+                ClearHighlightAndPopup();
+            }
+
+            //아이템을 들고있다면
+            if (_viewModel.HasItem)
+            {
+                //필터 상태에 걸러진다면 어둡게, 그렇지 않다면 정상적으로 아이콘을 보여줌
+                if (_iconElement != null)
+                {
+                    _iconElement.style.backgroundImage = new StyleBackground(_viewModel.IconSprite);
+                    _iconElement.style.unityBackgroundImageTintColor = _viewModel.IsFilteredOut 
+                        ? new Color(0.25f, 0.25f, 0.25f, 1f) 
+                        : Color.white;
+                }
+                
+                //수량 레이블이 존재하는 아이템이라면
+                if (_countLabel != null)
+                {
+                    //2개 이상이라면
+                    if (_viewModel.IsAmountVisible)
+                    {
+                        //수량을 보여지게하고, 수량을 지정해줌
+                        _countLabel.style.display = DisplayStyle.Flex;
+                        _countLabel.text = _viewModel.AmountText;
+                    }
+                    else
+                    {
+                        //아이템이 1개만 존재한다면 수량 레이블 숨김처리
+                        _countLabel.style.display = DisplayStyle.None;
+                    }
+                }
+            }
+            //아이템이 없다면
+            else
+            {
+                //만약 아이콘 더미데이터가 남아있다면 초기화
+                if (_iconElement != null)
+                {
+                    _iconElement.style.backgroundImage = null;
+                    _iconElement.style.unityBackgroundImageTintColor = Color.white;
+                }
+                //수량 레이블 숨김처리
+                if (_countLabel != null) _countLabel.style.display = DisplayStyle.None;
+            }
+        }
+        
+        //마우스 클릭 시 실행
+        private void OnPointerDown(PointerDownEvent evt)
+        {
+            //0 = 좌클릭, 1 = 우클릭, 2 = 휠클릭
+            
+            //우클릭이 진행됐다면
+            if (evt.button == 1) 
+            {
+                //사용 요청 진행
+                _onUseRequest?.Invoke(_index);
+                
+                //추가적인 클릭 판정 방지
+                evt.StopPropagation();
+                return;
+            }
+
+            //좌클릭이 진행됐다면
+            if (evt.button == 0)
+            {
+                //현재 게임 시간에서 마지막으로 클릭한 시간을 빼서 마지막 클릭 이후 시간 체크
+                float timeSinceLastClick = Time.time - _lastClickTime;
+                
+                //마지막으로 클릭한 시간이 0.2초 이내라면 더블클릭 판정
+                if (timeSinceLastClick < DOUBLE_CLICK_THRESHOLD)
+                {
+                    //사용 요청 진행
+                    _onUseRequest?.Invoke(_index);
+                    
+                    //세번 클릭 시 더블클릭이 두번되는걸 방지하기 위한 초기화
+                    _lastClickTime = 0;
+                }
+                else
+                {
+                    //더블클릭 판정을 위한 시간 기록
+                    _lastClickTime = Time.time;
+                }
+            }
+        }
+
+        //마우스가 슬롯 영역에 들어오면 실행
+        private void OnPointerEnter(PointerEnterEvent evt)
+        {
+            //필터로 인해 어두워진 슬롯은 패스
+            if (_viewModel != null && _viewModel.IsFilteredOut) return;
+
+            //하이라이트 적용
+            if (_highlightElement != null)
+            {
+                _highlightElement.style.backgroundColor = HighlightBgColor;
+                _highlightElement.style.borderTopColor = HighlightBorderColor;
+                _highlightElement.style.borderBottomColor = HighlightBorderColor;
+                _highlightElement.style.borderLeftColor = HighlightBorderColor;
+                _highlightElement.style.borderRightColor = HighlightBorderColor;
+                _highlightElement.style.borderTopWidth = 2f;
+                _highlightElement.style.borderBottomWidth = 2f;
+                _highlightElement.style.borderLeftWidth = 2f;
+                _highlightElement.style.borderRightWidth = 2f;
+            }
+
+            //아이템이 있다면
+            if (_viewModel != null && _viewModel.HasItem)
+            {
+                //툴팁 출력을 위한 이벤트 호출
+                OnPointerEnterSlot?.Invoke(_viewModel.ItemData, evt.position);
+            }
+        }
+
+        //슬롯 내에서 마우스가 움직일 때 실행
+        private void OnPointerMove(PointerMoveEvent evt)
+        {
+            //필터에 의해 어두워진 슬롯 패스
+            if (_viewModel != null && _viewModel.IsFilteredOut) return;
+            
+            //아이템이 있다면
+            if (_viewModel != null && _viewModel.HasItem)
+            {
+                //툴팁 위치 업데이트
+                OnPointerMoveSlot?.Invoke(evt.position);
+            }
+        }
+
+        //마우스가 슬롯을 빠져 나갈 때 실행
+        private void OnPointerLeave(PointerLeaveEvent evt)
+        {
+            //하이라이트 및 팝업 제거
+            ClearHighlightAndPopup();
+        }
+
+        private void ClearHighlightAndPopup()
+        {
+            //하이라이트 및 팝업 제거
+            if (_highlightElement != null)
+            {
+                _highlightElement.style.backgroundColor = StyleKeyword.Null;
+                _highlightElement.style.borderTopColor = StyleKeyword.Null;
+                _highlightElement.style.borderBottomColor = StyleKeyword.Null;
+                _highlightElement.style.borderLeftColor = StyleKeyword.Null;
+                _highlightElement.style.borderRightColor = StyleKeyword.Null;
+                _highlightElement.style.borderTopWidth = StyleKeyword.Null;
+                _highlightElement.style.borderBottomWidth = StyleKeyword.Null;
+                _highlightElement.style.borderLeftWidth = StyleKeyword.Null;
+                _highlightElement.style.borderRightWidth = StyleKeyword.Null;
+            }
+            OnPointerExitSlot?.Invoke();
+        }
+
+        public void ClearSubscribedEvents()
+        {
+            //이벤트 자체를 null로 만들어서 람다식 포함 모든 이벤트 연결 해제
+            OnPointerEnterSlot = null;
+            OnPointerMoveSlot = null;
+            OnPointerExitSlot = null;
+            OnSplitDropRequested = null;
+        }
+    }
+}

@@ -14,9 +14,9 @@ GameObject:
   - component: {fileID: 940334946169520807}
   - component: {fileID: 4232776704561422812}
   - component: {fileID: 3982742906567096643}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Mushroom
-  m_TagString: Untagged
+  m_TagString: Monster
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -137,8 +137,6 @@ MonoBehaviour:
   runDust: {fileID: 2971986372001114444}
   moveSpeed: 4
   bounceForce: 1
-  currentState: 0
-  waitTime: 1
   groundLayers:
   - serializedVersion: 2
     m_Bits: 64

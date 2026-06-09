@@ -17,6 +17,7 @@ public class Player : MonoBehaviour, PlayerStateController
     [SerializeField] Material defaultRenderer;
     [SerializeField] Material invincibleRenderer;
     [SerializeField] FSMGraph.FSMRuntimeGraph fsmGraphAsset; //상태머신 그래프
+    [SerializeField] GameObject bombPrefab; //폭탄 프리팹
     
     //파티클처리용
     [SerializeField] ParticleSystem runDust;
@@ -162,6 +163,12 @@ public class Player : MonoBehaviour, PlayerStateController
         yInput = Input.GetAxisRaw("Vertical");
         jumpInput = Input.GetButtonDown("Jump");
         dashInput = Input.GetKeyDown(KeyCode.LeftShift);
+        
+        //F 입력 시 폭탄 소환
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            SpawnBomb();
+        }
     }
     
     private void FixedUpdate()
@@ -357,6 +364,46 @@ public class Player : MonoBehaviour, PlayerStateController
         yield return new WaitForSeconds(1f);
 
         Destroy(effect);
+    }
+
+    //폭탄을 생성하는 메소드
+    private void SpawnBomb()
+    {
+        if (bombPrefab == null) return;
+
+        Vector2 bombBoxSize = new Vector2(0.8f, 0.8f);
+        float bombHalfSize = 0.4f;
+        float maxSpawnDistance = 1.2f;
+        float targetDistance;
+
+        RaycastHit2D hit = Physics2D.BoxCast(collider.bounds.center, bombBoxSize, 0f, Vector2.right * playerDirection, maxSpawnDistance + bombHalfSize, LayerMask.GetMask("Ground"));
+
+        //벽이 있는 경우
+        if (hit.collider != null)
+        {
+            //벽의 거리가 폭탄의 절반 크기보다 작은 경우
+            if (hit.distance < bombHalfSize)
+            {
+                //플레이어 위치에서 스폰
+                targetDistance = 0f;
+            }
+            //벽의 거리가 폭탄의 절반 크기보다 큰 경우
+            else
+            {
+                //벽까지의 거리
+                targetDistance = hit.distance;
+            }
+        } 
+        //벽이 없는 경우
+        else
+        {
+            //최대 제한 거리
+            targetDistance = maxSpawnDistance;
+        }
+        
+        //플레이어 위치, 시선방향, 거리
+        Vector3 finalSpawnPos = transform.position + new Vector3(playerDirection * targetDistance, 0, 0);
+        Instantiate(bombPrefab, finalSpawnPos, Quaternion.identity);
     }
     
     //함정, 몬스터에서 이벤트를 호출하기 위해 사용하는 통로용 메소드

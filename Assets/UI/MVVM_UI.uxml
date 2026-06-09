@@ -1,0 +1,13 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/UIStyle.uss?fileID=7433441132597879392&amp;guid=4fbf8f6f2eb293049813a414f41e378d&amp;type=3#UIStyle"/>
+    <ui:VisualElement name="MainContainer" enabled="true" style="flex-grow: 1; align-items: center; justify-content: center; display: none;">
+        <ui:Label text="LV : 0" name="LevelText" style="font-size: 30px; -unity-font-style: bold; width: 300px; height: 100px; -unity-text-align: middle-center;"/>
+        <ui:Label text="100 / 100" name="HpText" style="font-size: 30px; -unity-font-style: bold; margin-top: 4px; width: 300px; height: 100px; -unity-text-align: middle-center;"/>
+        <ui:ProgressBar value="50" title="50 / 100" name="ExpBar" style="width: 500px; height: 100px; font-size: 20px; -unity-font-style: bold; -unity-text-auto-size: none; margin-top: 20px;"/>
+        <ui:Button text="Damage" name="DamageButton" style="width: 300px; height: 100px; font-size: 20px; -unity-font-style: bold; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; background-color: rgb(255, 255, 255); margin-top: 25px;"/>
+    </ui:VisualElement>
+    <ui:VisualElement name="OpenCloseContainer" style="flex-grow: 0; width: 350px; align-self: flex-start; height: 250px; justify-content: center; align-items: center; position: absolute;">
+        <ui:Button text="Open" name="OpenButton" style="width: 300px; height: 100px; font-size: 20px; -unity-font-style: bold; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; background-color: rgb(255, 255, 255);"/>
+        <ui:Button text="Close" name="CloseButton" enabled="true" style="width: 300px; height: 100px; font-size: 20px; -unity-font-style: bold; border-top-left-radius: 5px; border-top-right-radius: 5px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px; background-color: rgb(255, 255, 255); margin-top: 15px;"/>
+    </ui:VisualElement>
+</ui:UXML>

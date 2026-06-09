@@ -66,6 +66,21 @@ namespace MapGeneration
         //4x4 방의 구조 정하기
         public int[][] GenerateMap()
         {
+            //4x4 빈 방 만들기
+            int[][] map = InitializeMapData();
+
+            //방 단위의 경로 설정
+            GeneratePath(map);
+
+            //아직 타입이 정해지지 않은 방의 타입을 0,1 중에서 랜덤하게 결정
+            FillEmptyRooms(map);
+
+            return map;
+        }
+
+        //4x4 빈 방 및 통로 위치 정하기
+        private int[][] InitializeMapData()
+        {
             //수평, 수직 통로 개수만큼 배열 크기 지정
             //좌우 통로는 세로로 4줄, 가로로 3줄이기 때문에 4,3 || 상하는 반대로 3,4
             horizontalDoors = new int[MapHeight, MapWidth - 1];
@@ -90,17 +105,11 @@ namespace MapGeneration
                     map[y][x] = -1;
                 }
             }
-
-            //방 단위의 경로 설정
-            GeneratePath(map);
-
-            //아직 타입이 정해지지 않은 방의 타입을 0,1 중에서 랜덤하게 결정
-            FillEmptyRooms(map);
-
+            
             return map;
         }
 
-        //방 단위에서 경로를 설정해주는 메소드
+        //방 단위의 경로를 설정해주는 메소드
         private void GeneratePath(int[][] map)
         {
             //시작 위치 결정
@@ -130,7 +139,7 @@ namespace MapGeneration
                     {
                         timeToDrop = true;
                     }
-                    //방금 막 떨어진 상태가 아니라면 떨어지는 방 생성 체크
+                    //방금 막 떨어진 상태가 아니라면 떨어지는 방 생성 시도
                     else if (!justDropped)
                     {
                         //시작방이라면 5% 확률로 떨어지게 만듦
@@ -276,6 +285,11 @@ namespace MapGeneration
 
             //플레이어 시작점, 게임 출구 배치할 위치 찾기
             PlaceStartAndEndMarkers(grid, mapX, mapY);
+            
+            //각종 오브젝트를 배치할 위치 찾기
+            bool startRoom = false;
+            if (mapY == 0 && mapX == StartRoomX) startRoom = true;
+            ObjectSpawner.SpawnObjInRoom(grid, mapX, mapY, startRoom);
 
             return grid;
         }
@@ -322,9 +336,9 @@ namespace MapGeneration
             {
                 case RoomType.Side: return 0.5f;
                 case RoomType.LeftRight: return 0.55f;
-                case RoomType.LeftRightBottom: return 0.45f;
-                case RoomType.LeftRightTop: return 0.45f;
-                default: return 0.45f;
+                case RoomType.LeftRightBottom: return 0.5f;
+                case RoomType.LeftRightTop: return 0.5f;
+                default: return 0.5f;
             }
         }
 
@@ -489,16 +503,15 @@ namespace MapGeneration
                     //시작점 마커 동작인 경우
                     if (marker == 'S')
                     {
-                        
                         //leftX 부터 체크 진행
-                        if (IsSizeSafeAndGrounded(grid, leftX, y, 2, 3))
+                        if (IsSizeSafeAndGrounded(grid, leftX, y, 2, 2))
                         {
                             grid[y][leftX] = marker;
                             return;
                         }
 
                         //leftX에서 확정이 안된경우 rightX 체크 진행
-                        if (IsSizeSafeAndGrounded(grid, rightX, y, 2, 3))
+                        if (IsSizeSafeAndGrounded(grid, rightX, y, 2, 2))
                         {
                             grid[y][rightX] = marker;
                             return;
@@ -549,10 +562,11 @@ namespace MapGeneration
             for (int w = 0; w < width; w++)
             {
                 //범위 바로 아래 영역들에 발판이 제대로 존재하는지 확인
-                if (grid[y + 1][x + w] == '1') return true;
+                if (grid[y + 1][x + w] == '0') return false;
             }
 
-            return false;
+            //모두 문제 없다면 통과
+            return true;
         }
 
         //공중에 뜬 1칸짜리 블록 등을 제거해주는 메소드
@@ -592,7 +606,7 @@ namespace MapGeneration
             }
         }
 
-        //캐릭터의 크기(세로3, 가로2)를 고려한 BFS 탐색 메소드
+        //캐릭터의 크기(세로2, 가로2)를 고려한 BFS 탐색 메소드
         private bool ValidatePathBFS(char[][] fullLevel)
         {
             //전체 맵의 높이, 넓이 측정
@@ -634,9 +648,9 @@ namespace MapGeneration
                 //이번 루프에서 검사학 데이터를 하나 꺼냄
                 Vector2Int curr = queue.Dequeue();
 
-                //도착 판정 - 2x3 크기의 플레이어 영역 중 단 한 칸이라도 E 마커에 닿았는지 확인
+                //도착 판정 - 2x2 크기의 플레이어 영역 중 단 한 칸이라도 E 마커에 닿았는지 확인
                 bool reachedExit = false;
-                for (int h = 0; h < 3; h++)
+                for (int h = 0; h < 2; h++)
                 {
                     for (int w = 0; w < 2; w++)
                     {
@@ -683,11 +697,11 @@ namespace MapGeneration
                     {
                         int jumpY = curr.y - h;
 
-                        //머리(y-2)가 맵 밖(천장 0)으로 나가지 않도록 방어
-                        if (jumpY < 2) break;
+                        //머리(y-1)가 맵 밖(천장 0)으로 나가지 않도록 방어
+                        if (jumpY < 1) break;
 
-                        //올라가는 도중 2칸 너비의 머리(y-2)가 천장('1')에 부딪히면 그 이상 점프 불가
-                        if (fullLevel[jumpY - 2][curr.x] == '1' || fullLevel[jumpY - 2][curr.x + 1] == '1')
+                        //올라가는 도중 2칸 너비의 머리(y-1)가 천장('1')에 부딪히면 그 이상 점프 불가
+                        if (fullLevel[jumpY - 1][curr.x] == '1' || fullLevel[jumpY - 1][curr.x + 1] == '1')
                             break;
 
                         //수직 점프 및 점프 궤적 중 좌우 이동 Enqueue 시도
@@ -712,9 +726,12 @@ namespace MapGeneration
         //새 좌표를 전달받아서 문제가 없다면 큐에 넣어주는 메소드
         private void TryEnqueue(char[][] fullLevel, int nx, int ny, Queue<Vector2Int> q, bool[,] v, int tWidth, int tHeight)
         {
+            //벽, 함정 문자열
+            string obstacles = "1^v<>";
+            
             //nx가 가로 2칸을 차지하므로 nx + 1도 맵 경계 안이어야 함
-            //ny가 세로 3칸(ny, ny-1, ny-2)을 차지하므로 ny >= 2 여야 함
-            if (nx >= 0 && nx + 1 < tWidth && ny >= 2 && ny < tHeight)
+            //ny가 세로 2칸(ny, ny-1)을 차지하므로 ny >= 1 여야 함
+            if (nx >= 0 && nx + 1 < tWidth && ny >= 1 && ny < tHeight)
             {
                 //아직 방문 확정이 안된 곳이라면
                 if (!v[ny, nx])
@@ -723,10 +740,11 @@ namespace MapGeneration
                     bool isClear = true;
                     
                     //(nx, ny) 좌표에 캐릭터를 세웠을 때, 몸의 면적 6칸중에 단 한칸이라도 타일(1)이 있는지 확인
-                    for (int h = 0; h < 3; h++)
+                    //+ 함정이 있는지도 확인해야 함
+                    for (int h = 0; h < 2; h++)
                     {
-                        //h가 0이라면 가장 아래 두칸, 1이라면 중앙 두칸, 2라면 머리 두칸
-                        if (fullLevel[ny - h][nx] == '1' || fullLevel[ny - h][nx + 1] == '1')
+                        //h가 0이라면 아래 두칸, 1이라면 위 두칸
+                        if (obstacles.Contains(fullLevel[ny - h][nx]) || obstacles.Contains(fullLevel[ny - h][nx + 1]))
                         {
                             isClear = false;
                             break;

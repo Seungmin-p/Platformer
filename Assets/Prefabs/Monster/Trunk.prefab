@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5595357127646541532
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2329288235875693837}
+  m_Layer: 0
+  m_Name: FirePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2329288235875693837
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5595357127646541532}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -0.758, y: -0.242, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7300030105703038197}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7371960300656122209
 GameObject:
   m_ObjectHideFlags: 0
@@ -14,7 +45,7 @@ GameObject:
   - component: {fileID: 8470097287891484901}
   - component: {fileID: 6944308284336845541}
   - component: {fileID: 2951558670161228365}
-  m_Layer: 0
+  m_Layer: 12
   m_Name: Trunk
   m_TagString: Monster
   m_Icon: {fileID: 0}
@@ -35,6 +66,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8626528749522686135}
+  - {fileID: 2329288235875693837}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!212 &2448582145418453491
@@ -137,8 +169,6 @@ MonoBehaviour:
   runDust: {fileID: 4214173802074682068}
   moveSpeed: 4
   bounceForce: 1
-  currentState: 0
-  waitTime: 1
   groundLayers:
   - serializedVersion: 2
     m_Bits: 64
@@ -148,7 +178,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1024
   projectilePrefab: {fileID: 2698892189387641359, guid: 3b0b0084c0e5d9f4086f4454a807c7e1, type: 3}
-  firePoint: {fileID: 0}
+  firePoint: {fileID: 2329288235875693837}
   attackCooldown: 0.8
 --- !u!50 &6944308284336845541
 Rigidbody2D:

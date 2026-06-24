@@ -17,6 +17,5 @@ MonoBehaviour:
   _tooltip: "HP \uD68C\uBCF5\uB7C9 : 50\n\n\uC0B4\uC9DD \uB2E8 \uB9DB\uC774 \uB098\uB294
     \uB4EF \uD558\uB2E4."
   _iconSprite: {fileID: 8562186863540702109, guid: 5ebe644d5dbd69a4fb03ed42f9226743, type: 3}
-  _dropItemPrefab: {fileID: 0}
   _maxAmount: 99
-  _value: 0
+  _value: 50

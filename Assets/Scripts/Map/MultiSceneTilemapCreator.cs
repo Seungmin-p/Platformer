@@ -82,7 +82,6 @@ public class MultiSceneTilemapCreator : MonoBehaviour
         //타일맵, 타일맵 렌더러, 타일맵 콜라이더 컴포넌트 등록
         Tilemap tilemap = tilemapObj.AddComponent<Tilemap>();
         tilemapObj.AddComponent<TilemapRenderer>();
-        tilemapObj.AddComponent<TilemapCollider2D>();
 
         //타일맵 오브젝트에 태그, 레이어 등록
         try { tilemapObj.tag = tilemapTag; } catch { }
@@ -159,6 +158,12 @@ public class MultiSceneTilemapCreator : MonoBehaviour
                 }
             }
         }
+        
+        //스폰 컨테이너 비활성화 해두기
+        spawnContainer.SetActive(false);
+        
+        //타일맵 cellBounds의 크기를 최소 영역으로 재계산
+        tilemap.CompressBounds();
         
         //지정된 경로에 씬 저장하고 닫기
         string fullPath = $"{RoomSavePath}{sceneName}.unity";

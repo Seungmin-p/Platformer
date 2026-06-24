@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace MyInventory
 {
-    [CreateAssetMenu(fileName = "Item_Potion_", menuName = "Inventory System/Item Data/Potion", order = 3)]
+    [CreateAssetMenu(fileName = "Item_Potion_", 
+        menuName = "Inventory System/Item Data/Potion", order = 3)]
     public class PotionItemData : CountableItemData
     {
         [Header("사용 효과 설정")]

@@ -5,20 +5,19 @@ public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
 
-    [SerializeField] private View playerView;
+    [SerializeField] private UIToolkitView playerView;
+    [SerializeField] private UIToolkitModel _playerModel;
 
-    private ViewModel _playerViewModel;
-    private Model _playerModel;
+    private UIToolkitViewModel _playerViewModel;
 
     private void Awake()
     {
         if (Instance == null) Instance = this;
 
-        // 1. 장기 보존될 데이터(Model) 생성
-        _playerModel = new Model(100, 0, 1);
-
         // 2. 데이터를 관리할 ViewModel 생성 (View가 없어도 미리 생성 가능!)
-        _playerViewModel = new MVVM.ViewModel(_playerModel);
+        _playerViewModel = new UIToolkitViewModel(_playerModel);
+        
+        //기존의 이벤트 바인딩 기반은 옵저버 패턴과 동일
     }
 
     private void Start()
@@ -36,7 +35,7 @@ public class UIManager : MonoBehaviour
         // 비로소 ViewModel과 Model의 깊은 연결을 최종적으로 끊어줌 (메모리 누수 방지)
         if (_playerViewModel != null)
         {
-            _playerViewModel.UnBind();
+            //TODO: 객체 파괴
         }
     }
 }

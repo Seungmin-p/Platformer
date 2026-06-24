@@ -1,28 +1,38 @@
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-namespace MyInventory
+namespace MyInventory.UIToolkit
 {
     public class InventoryBootstrapper : MonoBehaviour
     {
-        //인벤토리의 모델과 뷰를 입력받아서 뷰모델 생성 및 연결
-        [SerializeField] Inventory _inventoryModel;
+        //인벤토리의 모델과 뷰를 이용해서 뷰모델 생성 및 연결하기 위해 연결받음
+        [SerializeField, Range(8, 64)] int _initialCapacity = 32;
+        [SerializeField, Range(8, 64)] int _maxCapacity = 64;
         [SerializeField] InventoryView _inventoryView;
         
         [Header("아이템 목록")]
         [SerializeField]  ItemData[] _itemDatabase;
+        
+        //인벤토리 모델
+        private Inventory _inventoryModel;
 
         private void Start()
         {
-            if (_inventoryModel == null || _inventoryView == null)
+            if (_inventoryView == null)
             {
                 Debug.LogError("[InventoryBootstrapper] 인스펙터 컴포넌트 할당을 확인해주세요.");
                 return;
             }
             
+            //인벤토리 모델 생성
+            _inventoryModel = new Inventory(_initialCapacity, _maxCapacity);
+            
             //인벤토리 모델 데이터를 기준으로 뷰모델 생성 이후 뷰에서 바인딩 진행
             InventoryViewModel viewModel = new InventoryViewModel(_inventoryModel);
             _inventoryView.Bind(viewModel);
+
+            //바인딩 이후 초기화 진행
+            _inventoryModel.Initialize();
             
             //게임 시작 시 모든 아이템 종류를 인벤토리에 넣어줌
             if (_itemDatabase != null && _itemDatabase.Length > 0)

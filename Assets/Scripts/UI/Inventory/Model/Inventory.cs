@@ -5,12 +5,8 @@ using UnityEngine;
 namespace MyInventory
 {
     //인벤토리 Model
-    public class Inventory : MonoBehaviour
+    public class Inventory
     {
-        //초기 인벤 칸, 최대 칸
-        [SerializeField, Range(8, 64)] int _initialCapacity = 32;
-        [SerializeField, Range(8, 64)] int _maxCapacity = 64;
-
         //인벤토리 슬롯 배열 및 내부 인덱스 연산용 변수
         private Item[] _items;
         private readonly HashSet<int> _indexSetForUpdate = new HashSet<int>();
@@ -18,7 +14,7 @@ namespace MyInventory
         //정렬처리용 변수
         private IComparer<Item> _itemComparer;
 
-        //외부 전달용 인벤토리 크기 프로퍼티
+        //외부 호출용 인벤토리 크기 프로퍼티
         public int Capacity { get; private set; }
 
         //MVVM 구조를 위한 이벤트
@@ -35,20 +31,22 @@ namespace MyInventory
             { typeof(MaterialItemData),   40000 }, 
         };
 
-        private void Awake()
+        //생성자를 이용해서 초기 세팅 진행
+        public Inventory(int initialCapacity, int maxCapacity)
         {
             //인벤토리 칸 수가 최대치를 넘을 수 없게 함
-            if (_initialCapacity > _maxCapacity) _initialCapacity = _maxCapacity;
+            if (initialCapacity > maxCapacity) initialCapacity = maxCapacity;
             
             //Array.Sort를 이용하기 위한 IComparer 규격의 객체를 미리 저장해둠
             _itemComparer = Comparer<Item>.Create(CompareItems);
             
             //최대치에 맞춰서 인벤토리 공간 확보 및 현재 칸 조정
-            _items = new Item[_maxCapacity];
-            Capacity = _initialCapacity;
+            _items = new Item[maxCapacity];
+            Capacity = initialCapacity;
         }
 
-        private void Start()
+        //바인딩 처리 후 호출되는 인벤토리 크기 할당용 초기화 메소드
+        public void Initialize()
         {
             //인벤토리 크기 할당을 위한 이벤트 호출
             OnCapacityChanged?.Invoke(Capacity);
@@ -129,7 +127,7 @@ namespace MyInventory
         public void Swap(int indexA, int indexB)
         {
             //두 인덱스가 문제 없는지 확인
-            if (!IsValidIndex(indexA) || !IsValidIndex(indexB)) return;
+            if (!IsValidIndex(indexA) || !IsValidIndex(indexB) || indexA == indexB ) return;
 
             Item itemA = _items[indexA];
             Item itemB = _items[indexB];

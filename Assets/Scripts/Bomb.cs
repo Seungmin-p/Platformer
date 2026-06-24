@@ -171,9 +171,28 @@ namespace MapGeneration
                     {
                         Player.Instance.CallDeathEvent(Vector2.up); 
                     }
-                    else
+                    else if(obj.CompareTag("Trap"))
                     {
+                        //청크 매니저가 확인된다면
+                        if (ChunkManager.Instance != null)
+                        {
+                            //파괴된 오브젝트의 위치를 기반으로 D 마킹
+                            ChunkManager.Instance.MarkObjectAsDestroyed(obj.transform.position);
+                        }
                         Destroy(obj.gameObject);
+                    }
+                    else if (obj.CompareTag("Monster"))
+                    {
+                        Monster monster = obj.GetComponent<Monster>();
+                        if (monster != null)
+                        {
+                            //몬스터가 내부적으로 D 마크를 찍을 수 있도록 히트처리
+                            monster.HitByExplosion(); 
+                        }
+                        else
+                        {
+                            Destroy(obj.gameObject);
+                        }
                     }
                 }
 

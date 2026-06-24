@@ -307,6 +307,13 @@ public class Player : MonoBehaviour, PlayerStateController
             //아이템 획득 관련 이벤트 호출
             OnItemCollected?.Invoke();
 
+            //청크 매니저가 확인된다면
+            if (ChunkManager.Instance != null)
+            {
+                //아이템의 위치를 기반으로 'D' 마킹
+                ChunkManager.Instance.MarkObjectAsDestroyed(collision.transform.position);
+            }
+            
             //획득한 아이템 삭제
             Destroy(collision.gameObject);
             

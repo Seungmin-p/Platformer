@@ -37,6 +37,7 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     
     protected int direction; //몬스터가 바라보고 이동하는 방향
     protected int combinedLayerMask; //합쳐진 레이어값들을 저장해두는 변수
+    private Vector3 spawnPosition; //몬스터의 스폰 좌표
     
     //상태 체크용 변수
     //다른 스크립트에서 코드를 작성하다가 실수로 사용하지 못하게 컨트롤러 통해서 관리
@@ -64,7 +65,11 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
         }
     }
 
-    protected virtual void Start() { }
+    protected virtual void Start()
+    {
+        //스폰 위치 저장
+        spawnPosition = transform.position;
+    }
 
     protected virtual void Update()
     {
@@ -151,9 +156,16 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
         transform.localScale = scale;
     }
     
-    //방향전환
+    //사망판정
     void MonsterStateController.ExecuteDie(Vector2 bounceDir)
     {
+        //청크 매니저가 확인된다면
+        if (ChunkManager.Instance != null)
+        {
+            //아이템의 위치를 기반으로 'D' 마킹
+            ChunkManager.Instance.MarkObjectAsDestroyed(spawnPosition);
+        }
+        
         //트리거 및 애니메이션 변경
         col.isTrigger = true; 
         animator.Play("Hit");
@@ -251,5 +263,11 @@ public abstract class Monster : MonoBehaviour, MonsterStateController
     private void RunDust()
     {
         runDust.Emit(Random.Range(1,3));
+    }
+
+    public void HitByExplosion()
+    {
+        //단순하게 Hit 실행
+        TakeHit(new Vector2(0,0));
     }
 }

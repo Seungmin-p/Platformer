@@ -26,6 +26,8 @@ namespace MyInventory.UGUI
         //인벤토리 레이아웃
         //UI 제어용 변수, 인벤토리 창, 슬롯영역
         [SerializeField] GameObject _inventoryWindow;
+        [SerializeField] Canvas _inventoryCanvas; //인벤토리 캔버스
+        [SerializeField] GraphicRaycaster _inventoryRaycaster; //인벤토리 레이캐스터
         [SerializeField] RectTransform _slotArea;
 
         [Header("UGUI 전용 버튼 컴포넌트 배선")]
@@ -218,8 +220,13 @@ namespace MyInventory.UGUI
         {
             //인벤토리 창 활성화, 만약 이미 활성화 되어있다면 비활성화
             if (_inventoryWindow == null) return;
-            bool isVisible = _inventoryWindow.activeSelf;
-            _inventoryWindow.SetActive(!isVisible);
+            
+            //activeSelf 대신 enabled 이용해서 활성화 상태 판단
+            bool isVisible = _inventoryCanvas.enabled;
+            
+            //오브젝터의 SetActive 대신, 캔버스 및 레이캐스터 컴포넌트 상태 변경
+            _inventoryCanvas.enabled = !isVisible;
+            _inventoryRaycaster.enabled = !isVisible;
             
             //인벤토리가 닫히면 모든 팝업을 닫음
             if (isVisible) CloseAllPopups();
@@ -231,7 +238,9 @@ namespace MyInventory.UGUI
             //인벤토리 및 팝업 닫기
             if (_inventoryWindow != null)
             {
-                _inventoryWindow.SetActive(false);
+                //오브젝터의 SetActive 대신, 캔버스 및 레이캐스터 컴포넌트 상태 비활성화
+                _inventoryCanvas.enabled = false;
+                _inventoryRaycaster.enabled = false;
                 CloseAllPopups();
             }
         }

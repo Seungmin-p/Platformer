@@ -46,15 +46,18 @@ public class MultiSceneTilemapCreator : MonoBehaviour
             }
         }
         
+        //2차원 char 배열 -> 1차원 string 배열 전환 작업
         string[] serializedData = new string[fullLevel.Length];
         for (int i = 0; i < fullLevel.Length; i++)
         {
             serializedData[i] = new string(fullLevel[i]);
         }
 
+        //청크 매니저 확인
         ChunkManager chunkManager = Object.FindFirstObjectByType<ChunkManager>();
         if (chunkManager != null)
         {
+            //새 데이터(전체 맵 정보) 저장
             chunkManager.SaveLevelData(serializedData);
             EditorUtility.SetDirty(chunkManager); 
             EditorSceneManager.MarkSceneDirty(chunkManager.gameObject.scene); 

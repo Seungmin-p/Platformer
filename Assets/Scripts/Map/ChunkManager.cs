@@ -48,7 +48,7 @@ public class ChunkManager : MonoBehaviour
             }
         }
     }
-
+    
     private IEnumerator Start()
     {
         //시작 방 찾기
